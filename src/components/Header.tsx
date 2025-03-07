@@ -1,12 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, BarChart, Map, Home, Info } from 'lucide-react';
+import { Menu, X, BarChart, Map, Home, Info, Bell, Moon, Sun } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const location = useLocation();
 
   const navItems = [
@@ -35,12 +37,22 @@ const Header = () => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
 
+  // Toggle dark mode
+  const toggleDarkMode = () => {
+    setIsDarkMode(!isDarkMode);
+    if (!isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  };
+
   return (
     <header
       className={cn(
         'fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out px-6 md:px-8 py-3',
         {
-          'bg-white/80 backdrop-blur-lg shadow-sm': isScrolled,
+          'bg-white/90 backdrop-blur-lg shadow-sm dark:bg-gray-900/90': isScrolled,
           'bg-transparent': !isScrolled,
         }
       )}
@@ -76,23 +88,39 @@ const Header = () => {
           ))}
         </nav>
 
+        {/* Action Buttons */}
+        <div className="hidden md:flex items-center space-x-2">
+          <Button variant="ghost" size="icon" onClick={toggleDarkMode} className="rounded-full">
+            {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          </Button>
+          <Button variant="ghost" size="icon" className="rounded-full">
+            <Bell className="h-5 w-5" />
+          </Button>
+          <Button className="rounded-full">Sign In</Button>
+        </div>
+
         {/* Mobile Navigation Button */}
-        <button
-          className="md:hidden rounded-lg p-2 text-foreground hover:bg-secondary"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          aria-label="Toggle menu"
-        >
-          {mobileMenuOpen ? (
-            <X className="h-5 w-5" />
-          ) : (
-            <Menu className="h-5 w-5" />
-          )}
-        </button>
+        <div className="flex md:hidden items-center space-x-2">
+          <Button variant="ghost" size="icon" onClick={toggleDarkMode} className="rounded-full">
+            {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          </Button>
+          <button
+            className="rounded-lg p-2 text-foreground hover:bg-secondary"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? (
+              <X className="h-5 w-5" />
+            ) : (
+              <Menu className="h-5 w-5" />
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Mobile Navigation Menu */}
       {mobileMenuOpen && (
-        <div className="absolute top-full left-0 right-0 bg-white/95 backdrop-blur-lg border-b border-border shadow-lg animate-slide-down md:hidden">
+        <div className="absolute top-full left-0 right-0 bg-white/95 backdrop-blur-lg border-b border-border shadow-lg animate-slide-down md:hidden dark:bg-gray-900/95">
           <nav className="max-w-7xl mx-auto py-3 px-6">
             <div className="flex flex-col space-y-1">
               {navItems.map((item) => (
@@ -110,6 +138,7 @@ const Header = () => {
                   {item.name}
                 </Link>
               ))}
+              <Button className="mt-3 w-full">Sign In</Button>
             </div>
           </nav>
         </div>
