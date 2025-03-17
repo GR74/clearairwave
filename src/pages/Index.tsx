@@ -8,6 +8,8 @@ import AirQualityTips from '@/components/AirQualityTips';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { ArrowRight, BarChart2, Users, Globe, Bell } from 'lucide-react';
+import EmailSubscription from '@/components/dashboard/EmailSubscription';
+
 
 const Index = () => {
   return (
@@ -15,7 +17,8 @@ const Index = () => {
       <Header />
       <main>
         <HeroSection />
-        
+        <EmailSubscription />
+
         {/* Features section */}
         <section className="py-16 bg-gradient-to-b from-white to-secondary/30">
           <div className="max-w-7xl mx-auto px-6 lg:px-8">
