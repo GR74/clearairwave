@@ -1,4 +1,3 @@
-
 import { calculateAQI, getAQICategory } from './aqiUtils';
 
 // Sensor types and interfaces
@@ -34,9 +33,8 @@ const randomInRange = (min: number, max: number) => {
 
 // Generate dummy sensor data
 export const generateSensors = (count: number = 10): Sensor[] => {
-  // Central coordinates (approximately Boulder, CO)
-  const centerLat = 40.014984;
-  const centerLng = -105.270546;
+  const centerLat = 39.9612;
+  const centerLng = -82.9988;
   
   // Radius for sensor distribution (in degrees)
   const radius = 0.05;
