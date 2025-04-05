@@ -14,24 +14,24 @@ const queryClient = new QueryClient();
 
 const App = () => {
   // Check for user preference on dark mode
-  useEffect(() => {
-    if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      document.documentElement.classList.add("dark");
-    }
+  // useEffect(() => {
+  //   if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+  //     document.documentElement.classList.add("dark");
+  //   }
 
-    // Listen for changes to the prefers-color-scheme media query
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleChange = (e: MediaQueryListEvent) => {
-      if (e.matches) {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
-    };
+  //   // Listen for changes to the prefers-color-scheme media query
+  //   const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  //   const handleChange = (e: MediaQueryListEvent) => {
+  //     if (e.matches) {
+  //       document.documentElement.classList.add("dark");
+  //     } else {
+  //       document.documentElement.classList.remove("dark");
+  //     }
+  //   };
 
-    mediaQuery.addEventListener("change", handleChange);
-    return () => mediaQuery.removeEventListener("change", handleChange);
-  }, []);
+  //   mediaQuery.addEventListener("change", handleChange);
+  //   return () => mediaQuery.removeEventListener("change", handleChange);
+  // }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
