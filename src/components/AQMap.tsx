@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { sensors } from '@/utils/dummyData';
@@ -8,7 +7,6 @@ import { X } from 'lucide-react';
 import L from 'leaflet';
 
 // Fix for default marker icons in Leaflet with React
-// This is necessary because the webpack bundling process doesn't handle Leaflet's assets correctly
 (L.Icon.Default.prototype as any)._getIconUrl = undefined;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -26,19 +24,25 @@ const createColoredIcon = (color: string) => {
   });
 };
 
-// Component to recenter map when needed
-const MapCenter = ({ center }: { center: [number, number] }) => {
+// Component to fit bounds to cover all markers
+const FitBounds = () => {
   const map = useMap();
-  map.setView(center, map.getZoom());
+
+  useEffect(() => {
+    if (sensors.length > 0) {
+      // Extract all sensor coordinates
+      const bounds = sensors.map((sensor) => [sensor.location.lat, sensor.location.lng]);
+
+      // Fit the map to the bounds
+      map.fitBounds(bounds as L.LatLngBoundsExpression, { padding: [50, 50] });
+    }
+  }, [map, sensors]);
+
   return null;
 };
 
 const AQMap = () => {
   const [selectedSensor, setSelectedSensor] = useState<string | null>(null);
-  
-  // Center coordinates (approximately Boulder, CO - same as in our dummy data)
-// Define center position for Columbus, Ohio
-const centerPosition: [number, number] = [39.9612, -82.9988]; // Columbus, Ohio coordinates
 
   // Get the selected sensor data
   const selectedSensorData = selectedSensor 
@@ -48,84 +52,88 @@ const centerPosition: [number, number] = [39.9612, -82.9988]; // Columbus, Ohio 
   return (
     <div className="relative w-full h-full rounded-xl shadow-sm overflow-hidden">
       <MapContainer 
-        center={centerPosition} 
+        center={[39.9612, -82.9988]} // Default center (will be overridden by FitBounds)
         zoom={13} 
         style={{ height: '100%', width: '100%' }}
         className="z-0"
       >
         <TileLayer
-attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>'
-url="https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png"
-/>
+          attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>'
+          url="https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png"
+        />
 
-
-
-
-
-
-
-
-
-        
-        {/* Center the map on the selected position */}
-        <MapCenter center={centerPosition} />
+        {/* Fit bounds to cover all markers */}
+        <FitBounds />
         
         {/* Add markers for each sensor */}
-        {sensors.map((sensor) => (
-          <Marker
-            key={sensor.id}
-            position={[sensor.location.lat, sensor.location.lng]}
-            icon={createColoredIcon(sensor.aqiCategory?.color || '#4ade80')}
-            eventHandlers={{
-              click: () => {
-                setSelectedSensor(sensor.id);
-              },
-            }}
-          >
-            <Popup>
-              <div className="p-1">
-                <button 
-                  className="absolute top-1 right-1 text-gray-400 hover:text-gray-600"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedSensor(null);
-                  }}
-                >
-                  <X className="h-3 w-3" />
-                </button>
-                
-                <div className="font-medium text-sm">{sensor.name}</div>
-                
-                <div 
-                  className="text-xs inline-block px-2 py-0.5 rounded-full my-1 font-medium"
-                  style={{ 
-                    backgroundColor: `${sensor.aqiCategory?.color}20`,
-                    color: sensor.aqiCategory?.color
-                  }}
-                >
-                  {sensor.aqiCategory?.category}
-                </div>
-                
-                <div className="space-y-1 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">PM2.5:</span>
-                    <span className="font-medium">{formatPM25(sensor.pm25)} µg/m³</span>
+        {sensors.map((sensor) => {
+          const position: [number, number] = [sensor.location.lat, sensor.location.lng];
+
+          return (
+            <Marker
+              key={sensor.id}
+              position={position}
+              icon={createColoredIcon(sensor.aqiCategory?.color || '#4ade80')}
+              eventHandlers={{
+                click: (e) => {
+                  const map = e.target._map; // Access the map instance from the event
+                  setSelectedSensor(sensor.id);
+
+                  // Check if the current zoom level is below a threshold (e.g., 12)
+                  if (map.getZoom() < 12) {
+                    map.flyTo(position, 15, { animate: true, duration: 0.5 }); // Smoothly fly to the marker
+                  }
+
+                  // Open the popup programmatically
+                  e.target.openPopup();
+                },
+              }}
+            >
+              <Popup>
+                <div className="p-1">
+                  <button 
+                    className="absolute top-1 right-1 text-gray-400 hover:text-gray-600"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedSensor(null);
+                    }}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                  
+                  <div className="font-medium text-sm">{sensor.name}</div>
+                  
+                  <div 
+                    className="text-xs inline-block px-2 py-0.5 rounded-full my-1 font-medium"
+                    style={{ 
+                      backgroundColor: `${sensor.aqiCategory?.color}20`,
+                      color: sensor.aqiCategory?.color
+                    }}
+                  >
+                    {sensor.aqiCategory?.category}
                   </div>
                   
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Temperature:</span>
-                    <span className="font-medium">{sensor.temperature.toFixed(1)} °C</span>
-                  </div>
-                  
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Humidity:</span>
-                    <span className="font-medium">{sensor.humidity.toFixed(0)}%</span>
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">PM2.5:</span>
+                      <span className="font-medium">{formatPM25(sensor.pm25)} µg/m³</span>
+                    </div>
+                    
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Temperature:</span>
+                      <span className="font-medium">{sensor.temperature.toFixed(1)} °C</span>
+                    </div>
+                    
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Humidity:</span>
+                      <span className="font-medium">{sensor.humidity.toFixed(0)}%</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+              </Popup>
+            </Marker>
+          );
+        })}
       </MapContainer>
 
       {/* Map Legend */}

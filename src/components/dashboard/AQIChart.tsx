@@ -16,7 +16,7 @@ const AQIChart: React.FC<AQIChartProps> = ({
   type = 'line', 
   data,
   timeRange = '24h', 
-  sensorId = 'sensor-1',
+  sensorId = 'sensor-2',
   height = 300
 }) => {
   // If no custom data is provided, use the appropriate data based on timeRange
