@@ -104,6 +104,7 @@ const DashboardPage = () => {
               <div className="flex">
                 <Tabs defaultValue="24h" value={timeRange} onValueChange={(v) => setTimeRange(v as any)}>
                   <TabsList>
+                    <TabsTrigger value="1h" className="text-xs">1h</TabsTrigger>
                     <TabsTrigger value="24h" className="text-xs">24h</TabsTrigger>
                     <TabsTrigger value="7d" className="text-xs">7 Days</TabsTrigger>
                     <TabsTrigger value="30d" className="text-xs">30 Days</TabsTrigger>
