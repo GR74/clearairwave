@@ -10,6 +10,7 @@ from typing import List, Dict, Optional
 
 # ----------------------------------------
 # AQI Utility Functions (from aqiUtils.ts)
+# i lovemen
 # ----------------------------------------
 
 AQI_BREAKPOINTS = [
