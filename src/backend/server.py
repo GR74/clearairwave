@@ -134,19 +134,18 @@ def random_in_range(min_val: float, max_val: float) -> float:
 def generate_sensors(sensor_json: dict) -> List[Sensor]:
     sensors = []
     for sensor_id, sensor_data in sensor_json.items():
-        name = sensor_data.get("name")
-        latitude = sensor_data.get("latitude")
-        longitude = sensor_data.get("longitude")
-        timestamp_str = sensor_data.get("timestamp")
-        value = sensor_data.get("value")
-        
-        # Fetch additional graph data for PM2.5
-        field = "pm2.5_ug_m3"
-        range_hours = 1
-        url = f"https://www.simpleaq.org/api/getgraphdata?id={name}&field={field}&rangehours={range_hours}&time={timestamp_str}"
-        print(url)
         try:
+            idN = sensor_id
+            name = sensor_data.get("name")
+            latitude = sensor_data.get("latitude")
+            longitude = sensor_data.get("longitude")
+            timestamp_str = sensor_data.get("timestamp")
+            value = sensor_data.get("value")
             
+            # Fetch additional graph data for PM2.5
+            field = "pm2.5_ug_m3"
+            range_hours = 1
+            url = f"https://www.simpleaq.org/api/getgraphdata?id={idN}&field={field}&rangehours={range_hours}&time={timestamp_str}"
             r = httpx.get(url, timeout=10.0)
             r.raise_for_status()
             print("each sensor data: ", r.json())
@@ -166,7 +165,7 @@ def generate_sensors(sensor_json: dict) -> List[Sensor]:
                 last_updated = datetime.now()
             
             sensor_obj = Sensor(
-                id=sensor_id,
+                id=idN,
                 name=name,
                 location=Location(lat=float(latitude), lng=float(longitude)),
                 pm25=pm25,
