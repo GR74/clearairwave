@@ -118,7 +118,7 @@ const Index = () => {
             <div>
               <h3 className="text-sm font-semibold mb-4">RESOURCES</h3>
               <ul className="space-y-2">
-                <li><a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">AQI Guide</a></li>
+                <li><a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">  Guide</a></li>
                 <li><a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">Health Effects</a></li>
                 <li><a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">Research</a></li>
                 <li><a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">FAQ</a></li>
