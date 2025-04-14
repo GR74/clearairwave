@@ -7,7 +7,6 @@ import { X } from 'lucide-react';
 import L from 'leaflet';
 import { Skeleton } from '@/components/ui/skeleton';
 
-
 // Fix for default marker icons in Leaflet with React
 (L.Icon.Default.prototype as any)._getIconUrl = undefined;
 L.Icon.Default.mergeOptions({
@@ -26,6 +25,11 @@ const createColoredIcon = (color: string) => {
   });
 };
 
+// Function to generate a random offset within ±range
+const getRandomOffset = (range: number): number => {
+  return (Math.random() * 2 - 1) * range; // Generates a random number between -range and +range
+};
+
 // Component to fit bounds to cover all markers
 const FitBounds = ({ sensors }: { sensors: any[] }) => {
   const map = useMap();
@@ -33,7 +37,10 @@ const FitBounds = ({ sensors }: { sensors: any[] }) => {
   useEffect(() => {
     if (sensors.length > 0) {
       // Extract all sensor coordinates
-      const bounds = sensors.map((sensor) => [sensor.location.lat, sensor.location.lng]);
+      const bounds = sensors.map((sensor) => [
+        sensor.location.lat + getRandomOffset(0.001), // Randomized latitude
+        sensor.location.lng + getRandomOffset(0.001), // Randomized longitude
+      ]);
 
       // Fit the map to the bounds
       map.fitBounds(bounds as L.LatLngBoundsExpression, { padding: [50, 50] });
@@ -62,13 +69,13 @@ const AQMap = () => {
         setIsLoading(false);
       }
     };
-    
+
     // Initial fetch
     fetchData();
-    
+
     // Set up interval for periodic updates
     const intervalId = setInterval(fetchData, 60000); // Refresh every minute
-    
+
     return () => clearInterval(intervalId);
   }, []);
 
@@ -109,16 +116,15 @@ const AQMap = () => {
           url="https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png"
         />
 
-
-
-
-
         {/* Fit bounds to cover all markers */}
         <FitBounds sensors={sensors} />
-        
+
         {/* Add markers for each sensor */}
         {sensors.map((sensor) => {
-          const position: [number, number] = [sensor.location.lat, sensor.location.lng];
+          // Apply random offset to the sensor's position
+          const randomizedLat = sensor.location.lat + getRandomOffset(0.001);
+          const randomizedLng = sensor.location.lng + getRandomOffset(0.001);
+          const position: [number, number] = [randomizedLat, randomizedLng];
 
           return (
             <Marker
@@ -151,9 +157,9 @@ const AQMap = () => {
                   >
                     <X className="h-3 w-3" />
                   </button>
-                  
+
                   <div className="font-medium text-sm">{sensor.name}</div>
-                  
+
                   <div 
                     className="text-xs inline-block px-2 py-0.5 rounded-full my-1 font-medium"
                     style={{ 
@@ -163,18 +169,18 @@ const AQMap = () => {
                   >
                     {sensor.aqiCategory?.category}
                   </div>
-                  
+
                   <div className="space-y-1 text-xs">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">PM2.5:</span>
                       <span className="font-medium">{formatPM25(sensor.pm25)} µg/m³</span>
                     </div>
-                    
+
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Temperature:</span>
                       <span className="font-medium">{sensor.temperature.toFixed(1)} °C</span>
                     </div>
-                    
+
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Humidity:</span>
                       <span className="font-medium">{sensor.humidity.toFixed(0)}%</span>
