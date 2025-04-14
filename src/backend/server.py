@@ -1,167 +1,344 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { Link } from 'react-router-dom';
-import { ArrowRight, Wind, Thermometer, CloudRain } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { calculateStatistics, formatPM25 } from '@/utils/aqiUtils';
-import DataCard from '@/components/ui/DataCard';
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+import httpx
+from apscheduler.schedulers.background import BackgroundScheduler
+from datetime import datetime, timedelta
+import random
+import math
+from pydantic import BaseModel
+from typing import List, Dict, Optional
+from datetime import datetime, timezone
 
-const HeroSection = () => {
-  const [realSensors, setRealSensors] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+# ----------------------------------------
+# AQI Utility Functions (from aqiUtils.ts)
+# i lovemen
+# ----------------------------------------
 
-  // Fetch real-time sensor data
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        const response = await axios.get("http://localhost:3001/api/sensors");
-        setRealSensors(response.data); // Set real sensor data
-        setIsLoading(false);
-      } catch (err) {
-        setError(err instanceof Error ? err : new Error('Failed to fetch sensor data'));
-        setIsLoading(false);
-      }
-    };
+AQI_BREAKPOINTS = [
+    {"min": 0, "max": 12, "category": "Good", "color": "#4ade80"},
+    {"min": 12.1, "max": 35.4, "category": "Moderate", "color": "#facc15"},
+    {"min": 35.5, "max": 55.4, "category": "Unhealthy for Sensitive Groups", "color": "#fb923c"},
+    {"min": 55.5, "max": 150.4, "category": "Unhealthy", "color": "#f87171"},
+    {"min": 150.5, "max": 250.4, "category": "Very Unhealthy", "color": "#c084fc"},
+    {"min": 250.5, "max": 500, "category": "Hazardous", "color": "#ef4444"}
+]
 
-    fetchData();
-    const intervalId = setInterval(fetchData, 60000); // Refresh every minute
-    return () => clearInterval(intervalId);
-  }, []);
+def calculate_aqi(pm25: float) -> int:
+    if pm25 < 0:
+        return 0
+    for i, bp in enumerate(AQI_BREAKPOINTS):
+        if pm25 <= bp["max"]:
+            lower_aqi = 0 if i == 0 else i * 50
+            upper_aqi = lower_aqi + 50
+            lower_conc = bp["min"]
+            upper_conc = bp["max"]
+            aqi = ((upper_aqi - lower_aqi) / (upper_conc - lower_conc)) * (pm25 - lower_conc) + lower_aqi
+            return round(aqi)
+    return 500
 
-  if (error) {
-    return (
-      <div className="py-10">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="text-center text-red-500">
-            <h2 className="text-xl font-semibold">Error loading hero section data</h2>
-            <p className="mt-2">{error.message}</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+def get_aqi_category(pm25: float) -> dict:
+    for bp in AQI_BREAKPOINTS:
+        if pm25 <= bp["max"]:
+            return {"category": bp["category"], "color": bp["color"]}
+    return {"category": "Hazardous", "color": "#ef4444"}
 
-  if (isLoading || !realSensors) {
-    return (
-      <div className="relative pb-12 pt-28 md:pb-16 md:pt-32 overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none -z-10 opacity-30 bg-gradient-to-br from-blue-50 via-blue-100 to-blue-50" />
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="md:flex md:justify-between md:gap-16 items-center">
-            <div className="space-y-5 max-w-2xl">
-              <span className="inline-flex items-center px-3 py-1 text-xs rounded-full bg-primary/10 text-primary font-medium">
-                Real-time air quality monitoring
-              </span>
-              <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight leading-tight sm:leading-tight">
-                Breathe with confidence.
-                <span className="text-primary block mt-1">Know your air.</span>
-              </h1>
-              <p className="text-lg text-muted-foreground">
-                ClearSkies Community AQ provides real-time air quality monitoring for your community,
-                helping you make informed decisions about outdoor activities and health protection.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3 sm:gap-4">
-              <Button asChild size="lg" className="rounded-full px-6 group" disabled>
-                View Dashboard
-              </Button>
-              <Button asChild variant="outline" size="lg" className="rounded-full px-6" disabled>
-                Explore Map
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+def get_health_recommendations(category: str) -> str:
+    if category == "Good":
+        return "Air quality is satisfactory, and air pollution poses little or no risk."
+    elif category == "Moderate":
+        return ("Air quality is acceptable. However, some pollutants may be a concern for "
+                "a small number of people who are unusually sensitive to air pollution.")
+    elif category == "Unhealthy for Sensitive Groups":
+        return ("Members of sensitive groups may experience health effects. The general public is "
+                "less likely to be affected.")
+    elif category == "Unhealthy":
+        return ("Some members of the general public may experience health effects; members of sensitive "
+                "groups may experience more serious health effects.")
+    elif category == "Very Unhealthy":
+        return "Health alert: The risk of health effects is increased for everyone."
+    elif category == "Hazardous":
+        return "Health warning of emergency conditions: everyone is more likely to be affected."
+    else:
+        return "Air quality information is currently unavailable."
 
-  const stats = calculateStatistics(realSensors);
-  const avgAQI = Math.round(
-    realSensors.reduce((sum, sensor) => sum + (sensor.aqi || 0), 0) / realSensors.length
-  );
+def format_pm25(pm25: float) -> str:
+    return f"{pm25:.1f}"
 
-  // Count the number of sensors in each category
-  const goodCount = realSensors.filter(s => s.aqiCategory?.category === 'Good').length;
-  const percentage = Math.round((goodCount / realSensors.length) * 100);
+# ----------------------------------------
+# Pydantic Models for API Data
+# ----------------------------------------
 
-  return (
-    <div className="relative pb-12 pt-28 md:pb-16 md:pt-32 overflow-hidden">
-      {/* Background gradient */}
-      <div className="absolute inset-0 pointer-events-none -z-10 opacity-30 bg-gradient-to-br from-blue-50 via-blue-100 to-blue-50" />
+class Location(BaseModel):
+    lat: float
+    lng: float
 
-      <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="md:flex md:justify-between md:gap-16 items-center">
-          <div className="md:flex-1 space-y-8">
-            <div className="space-y-5 max-w-2xl">
-              <span className="inline-flex items-center px-3 py-1 text-xs rounded-full bg-primary/10 text-primary font-medium">
-                Real-time air quality monitoring
-              </span>
+class AQICategory(BaseModel):
+    category: str
+    color: str
 
-              <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight leading-tight sm:leading-tight">
-                Breathe with confidence.
-                <span className="text-primary block mt-1">Know your air.</span>
-              </h1>
+class Sensor(BaseModel):
+    id: str
+    name: str
+    location: Location
+    pm25: float
+    temperature: float
+    humidity: float
+    lastUpdated: datetime
+    pressure: float
+    aqi: Optional[float] = None
+    aqiCategory: Optional[AQICategory] = None
 
-              <p className="text-lg text-muted-foreground">
-                ClearSkies Community AQ provides real-time air quality monitoring for your community,
-                helping you make informed decisions about outdoor activities and health protection.
-              </p>
-            </div>
+class HistoricalDataPoint(BaseModel):
+    timestamp: datetime
+    pm25: float
+    temperature: float
+    humidity: float
 
-            <div className="flex flex-wrap gap-3 sm:gap-4">
-              <Button asChild size="lg" className="rounded-full px-6 group">
-                <Link to="/dashboard">
-                  View Dashboard
-                  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </Link>
-              </Button>
+class HourlyDataPoint(BaseModel):
+    time: datetime
+    pm25: float
+    aqi: float
 
-              <Button asChild variant="outline" size="lg" className="rounded-full px-6">
-                <Link to="/map">Explore Map</Link>
-              </Button>
-            </div>
-          </div>
+# ----------------------------------------
+# Global Data Store
+# ----------------------------------------
 
-          <div className="md:flex-1 mt-12 md:mt-0 grid grid-cols-1 sm:grid-cols-2 gap-5">
-            <DataCard
-              title="Average PM2.5"
-              value={`${formatPM25(stats.averagePM25)} µg/m³`}
-              icon={<Wind className="h-5 w-5 text-primary" />}
-              description="Across all monitoring stations"
-              cardClassName="animate-slide-up [animation-delay:100ms]"
-            />
+DATA = {
+    "sensors": [],
+    "historical": {},
+    "hourly": [],
+    "statistics": {}
+}
 
-            <DataCard
-              title="Current AQI"
-              value={avgAQI}
-              icon={<Thermometer className="h-5 w-5 text-primary" />}
-              description="Air Quality Index (average)"
-              cardClassName="animate-slide-up [animation-delay:200ms]"
-            />
+# ----------------------------------------
+# Data Fetching and Generation Functions
+# ----------------------------------------
 
-            <DataCard
-              title="Clean Air Zones"
-              value={`${percentage}%`}
-              icon={<CloudRain className="h-5 w-5 text-primary" />}
-              description={`${goodCount} of ${realSensors.length} sensors reporting good air`}
-              cardClassName="animate-slide-up [animation-delay:300ms]"
-            />
+def fetch_pm25_data() -> dict:
+    url = (
+        "https://www.simpleaq.org/api/getdata?field=pm2.5&min_lat=-90&max_lat=90&min_lon=-180&max_lon=180&utc_epoch=1744612200000"
+    )
+    try:
+        response = httpx.get(url, timeout=10.0)
+        response.raise_for_status()
+        print("Fetched PM2.5 data")
+        # print("Response:", response.json())
+        return response.json()
+    except Exception as e:
+        print("Error fetching PM2.5 data:", str(e))
+        return {}
 
-            <div className="glass-card rounded-xl p-5 flex items-center justify-center animate-slide-up [animation-delay:400ms]">
-              <div className="text-center">
-                <div className="text-sm font-medium text-muted-foreground mb-1">Live Sensors</div>
-                <div className="text-2xl font-semibold">{realSensors.length}</div>
-                <div className="text-sm text-muted-foreground mt-1">
-                  Monitoring stations online
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+def random_in_range(min_val: float, max_val: float) -> float:
+    return random.uniform(min_val, max_val)
 
-export default HeroSection;
+def generate_sensors(sensor_json: dict) -> List[Sensor]:
+    sensors = []
+    for sensor_id, sensor_data in sensor_json.items():
+        try:
+            idN = sensor_id
+            name = sensor_data.get("name")
+            latitude = sensor_data.get("latitude")
+            longitude = sensor_data.get("longitude")
+            timestamp_str = datetime.now().isoformat()
+            value = sensor_data.get("value") 
+            range_hours = 1
+            
+            # Fetch additional graph data for PM2.5
+            field = {"pm2.5_ug_m3" : 0, "pressure_hPa" : 0 ,"temperature_C" : 0, "humidity_percent" : 0}
+            for f in field.keys():
+                
+                url = f"https://www.simpleaq.org/api/getgraphdata?id={idN}&field={f}&rangehours={range_hours}&time={timestamp_str}"
+                field[f] = httpx.get(url, timeout=10.0)
+                field[f].raise_for_status()
+                # print("each sensor data: ", field[f].json())
+                graph_data = field[f].json().get("value", [])
+                print("Graph data for field", f, ":", graph_data)
+                
+                if f == "pm2.5_ug_m3":
+                    if graph_data and len(graph_data) > 0 :
+                        try:
+                            
+                            pm25 = float(graph_data[-1])
+                           
+                        except:
+                            pm25 = 0
+                    else:
+                        pm25 = float(value)
+                elif f == "pressure_hPa":
+                    if graph_data and len(graph_data) > 0:
+                        try:
+                            pressure = float(graph_data[-1])
+                        except:
+                            pressure = 0
+                    else:
+                        pressure = 0
+                elif f == "temperature_C":
+                    if graph_data and len(graph_data) > 0:
+                        try:
+                            temperature = float(graph_data[-1])
+                        except:
+                            temperature = 0
+                    else:
+                        temperature = 0
+                elif f == "humidity_percent":    
+                    if graph_data and len(graph_data) > 0:
+                        try:
+                            humidity = float(graph_data[-1])
+                        except:
+                            humidity = 0
+                    else:
+                        humidity = 0
+                try:
+                    last_updated = datetime.fromisoformat(timestamp_str)
+                except Exception:
+                    last_updated = datetime.now()
+            
+            sensor_obj = Sensor(
+                id=idN,
+                name=name,
+                location=Location(lat=float(latitude), lng=float(longitude)),
+                pm25=pm25,
+                temperature=temperature,
+                humidity=humidity,
+                pressure=pressure,
+                lastUpdated=last_updated,
+                aqi=calculate_aqi(pm25),
+                aqiCategory=get_aqi_category(pm25)
+            )
+            sensors.append(sensor_obj)
+        except Exception as e:
+            print(f"Error processing sensor {sensor_data.get('name')}: {e}")
+    # print(sensors)
+    return sensors
+
+def generate_historical_data(days: int = 7, points_per_day: int = 24, baseline_pm25: float = 15) -> List[HistoricalDataPoint]:
+    now = datetime.now()
+    data_points = []
+    for day in range(days):
+        for point in range(points_per_day):
+            timestamp = now - timedelta(days=day)
+            hour = int((24 * point) / points_per_day)
+            timestamp = timestamp.replace(hour=hour, minute=0, second=0, microsecond=0)
+            
+            pm25_factor = 1.0
+            if (7 <= hour <= 9) or (16 <= hour <= 19):
+                pm25_factor = 1.5 + random.random() * 0.5
+            elif hour >= 22 or hour <= 5:
+                pm25_factor = 0.7 + random.random() * 0.3
+            
+            day_of_week = (now.weekday() - day) % 7
+            if day_of_week in (5, 6):
+                pm25_factor *= 0.85
+            
+            random_factor = 0.8 + random.random() * 0.4
+            pm25_value = baseline_pm25 * pm25_factor * random_factor
+            
+            temperature = 20 + 10 * math.sin((math.pi * hour) / 12) + random_in_range(-2, 2)
+            humidity = 50 + 15 * math.cos((math.pi * hour) / 12) + random_in_range(-5, 5)
+            
+            data_points.append(HistoricalDataPoint(
+                timestamp=timestamp,
+                pm25=pm25_value,
+                temperature=temperature,
+                humidity=humidity
+            ))
+    data_points.sort(key=lambda x: x.timestamp)
+    return data_points
+
+def generate_24hour_data() -> List[HourlyDataPoint]:
+    now = datetime.now()
+    hourly = []
+    for i in range(24):
+        timestamp = (now.replace(minute=0, second=0, microsecond=0) -
+                     timedelta(hours=23 - i))
+        hour = timestamp.hour
+        if (7 <= hour <= 9) or (16 <= hour <= 19):
+            base_pm25 = 30 + random.random() * 15
+        elif hour >= 22 or hour <= 5:
+            base_pm25 = 10 + random.random() * 5
+        else:
+            base_pm25 = 15 + random.random() * 10
+        hourly.append(HourlyDataPoint(
+            time=timestamp,
+            pm25=base_pm25,
+            aqi=calculate_aqi(base_pm25)
+        ))
+    return hourly
+
+def calculate_statistics(sensors: List[Sensor]) -> Dict:
+    if not sensors:
+        return {}
+    pm25_values = [sensor.pm25 for sensor in sensors]
+    average = sum(pm25_values) / len(pm25_values)
+    maximum = max(pm25_values)
+    minimum = min(pm25_values)
+    aqi_distribution = {}
+    for sensor in sensors:
+        category = sensor.aqiCategory.category if sensor.aqiCategory else "Unknown"
+        aqi_distribution[category] = aqi_distribution.get(category, 0) + 1
+    return {
+        "averagePM25": average,
+        "maxPM25": maximum,
+        "minPM25": minimum,
+        "aqiDistribution": aqi_distribution
+    }
+
+def refresh_data():
+    print("Refreshing data...", datetime.now().isoformat())
+    raw_data = fetch_pm25_data()
+    sensors = generate_sensors(raw_data)
+    historical = {}
+    for sensor in sensors:
+        historical[sensor.id] = generate_historical_data(7, 24, sensor.pm25 * 0.8)
+    hourly = generate_24hour_data()
+    stats = calculate_statistics(sensors)
+    
+    DATA["sensors"] = sensors
+    DATA["historical"] = historical
+    DATA["hourly"] = hourly
+    DATA["statistics"] = stats
+    print("Data refreshed", datetime.now().isoformat())
+
+# Initial data load
+refresh_data()
+
+# ----------------------------------------
+# FastAPI App Setup
+# ----------------------------------------
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # You can restrict this to your frontend URL(s)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(refresh_data, 'interval', minutes=10)
+scheduler.start()
+
+@app.get("/api/sensors", response_model=List[Sensor])
+def get_sensors():
+    return DATA["sensors"]
+
+@app.get("/api/historical")
+def get_historical():
+    return DATA["historical"]
+
+@app.get("/api/hourly", response_model=List[HourlyDataPoint])
+def get_hourly():
+    return DATA["hourly"]
+
+@app.get("/api/statistics")
+def get_statistics():
+    return DATA["statistics"]
+
+# ----------------------------------------
+# Run the Server (Uvicorn)
+# ----------------------------------------
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=3001)

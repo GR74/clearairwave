@@ -91,13 +91,7 @@ const Map = () => {
               </p>
             </div>
 
-            <Tabs defaultValue="map">
-              <TabsList>
-                <TabsTrigger value="map">Map View</TabsTrigger>
-                <TabsTrigger value="satellite">Satellite View</TabsTrigger>
-                <TabsTrigger value="heat">Heat Map</TabsTrigger>
-              </TabsList>
-            </Tabs>
+ 
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -182,10 +176,15 @@ const Map = () => {
                 </div>
 
                 <div className="mt-4 pt-4 border-t">
-                  <Button variant="outline" size="sm" className="w-full">
-                    <span>View All</span>
-                    <ArrowUpRight className="h-3 w-3 ml-1" />
-                  </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => window.location.href = "/dashboard"}
+                  >
+                  <span>View All</span>
+                  <ArrowUpRight className="h-3 w-3 ml-1" />
+                </Button>
                 </div>
               </div>
 

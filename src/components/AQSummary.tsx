@@ -140,7 +140,7 @@ const AQSummary = () => {
 
           <div className="flex-1">
             <div className="glass-card rounded-xl p-6">
-              <h3 className="text-lg font-medium mb-4">Air Quality Index Scale</h3>
+              <h3 className="text-lg font-medium mb-4">Air Quality Index Scale Based on PM2.5</h3>
 
               <div className="space-y-3">
                 {[
