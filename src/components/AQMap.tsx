@@ -185,6 +185,20 @@ const AQMap = () => {
                       <span className="text-muted-foreground">Humidity:</span>
                       <span className="font-medium">{sensor.humidity.toFixed(0)}%</span>
                     </div>
+
+                    {/* Add Last Recorded Date and Time */}
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Last Updated:</span>
+                      <span className="font-medium">
+                        {new Date(sensor.lastUpdated).toLocaleString([], {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </Popup>
