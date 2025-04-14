@@ -158,7 +158,15 @@ const Index = () => {
               ClearSkies Community Air Quality Monitoring Platform
             </p>
             <p className="text-xs text-muted-foreground mt-2">
-              Demo application with simulated data • {new Date().getFullYear()}
+              Demo application with simulated data and real data • {new Date().getFullYear()}
+            </p>
+          </div>
+          <div className="border-t border-border pt-8 text-center">
+          <p className="text-xs text-muted-foreground mt-2">
+              Made by Aniket Chaudhari, Gowrish Rajagopal, Yasharth Pandey
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Huge thanks to the SimpleAQ team!
             </p>
           </div>
         </div>
