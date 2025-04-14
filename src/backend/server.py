@@ -115,9 +115,7 @@ DATA = {
 
 def fetch_pm25_data() -> dict:
     url = (
-        "https://www.simpleaq.org/api/getdata?field=pm2.5"
-        "&min_lat=-90&max_lat=90&min_lon=-180&max_lon=180"
-        "&utc_epoch=1743899940000"
+        "https://www.simpleaq.org/api/getdata?field=pm2.5&min_lat=-90&max_lat=90&min_lon=-180&max_lon=180&utc_epoch=1743899940000"
     )
     try:
         response = httpx.get(url, timeout=10.0)
@@ -128,44 +126,11 @@ def fetch_pm25_data() -> dict:
     except Exception as e:
         print("Error fetching PM2.5 data:", str(e))
         return {}
-    
-def fetch_relative_humidity_data() -> dict:
-    url = (
-        "https://www.simpleaq.org/api/getdata?field=relativehumidity"
-        "&min_lat=-90&max_lat=90&min_lon=-180&max_lon=180"
-        "&utc_epoch=1744612200000"
-    )
-    try:
-        response = httpx.get(url, timeout=10.0)
-        response.raise_for_status()
-        print("Fetched relative humidity data")
-        return response.json()
-    except Exception as e:
-        print("Error fetching relative humidity data:", str(e))
-        return {}
-
-def fetch_temperature_data() -> dict:
-    url = (
-        "https://www.simpleaq.org/api/getdata?field=temperature"
-        "&min_lat=-90&max_lat=90&min_lon=-180&max_lon=180"
-        "&utc_epoch=1744612200000"
-    )
-    try:
-        response = httpx.get(url, timeout=10.0)
-        response.raise_for_status()
-        print("Fetched temperature data")
-        return response.json()
-    except Exception as e:
-        print("Error fetching temperature data:", str(e))
-        return {}
-    
 
 def random_in_range(min_val: float, max_val: float) -> float:
     return random.uniform(min_val, max_val)
 
 def generate_sensors(sensor_json: dict) -> List[Sensor]:
-    humidity_data = fetch_relative_humidity_data()
-    temperature_data = fetch_temperature_data()  # Fetch temperature data
     sensors = []
     for sensor_id, sensor_data in sensor_json.items():
         try:
@@ -173,39 +138,69 @@ def generate_sensors(sensor_json: dict) -> List[Sensor]:
             name = sensor_data.get("name")
             latitude = sensor_data.get("latitude")
             longitude = sensor_data.get("longitude")
-            timestamp_str = sensor_data.get("timestamp")
-            value = sensor_data.get("value")
+            # timestamp_str = sensor_data.get("timestamp")
+            timestamp_str = "2025-04-14T06:42:11.531Z"
+            value = sensor_data.get("value") 
+            range_hours = 1
             
             # Fetch additional graph data for PM2.5
-            field = "pm2.5_ug_m3"
-            range_hours = 1
-            url = f"https://www.simpleaq.org/api/getgraphdata?id={idN}&field={field}&rangehours={range_hours}&time={timestamp_str}"
-            r = httpx.get(url, timeout=10.0)
-            r.raise_for_status()
-            print("each sensor data: ", r.json())
-            graph_data = r.json().get("data", [])
-            
-            if graph_data and len(graph_data) > 0:
+            field = {"pm2.5_ug_m3" : 0, "pressure_hPa" : 0 ,"temperature_C" : 0, "humidity_percent" : 0}
+            for f in field.keys():
+                
+                url = f"https://www.simpleaq.org/api/getgraphdata?id={idN}&field={f}&rangehours={range_hours}&time={timestamp_str}"
+                field[f] = httpx.get(url, timeout=10.0)
+                field[f].raise_for_status()
+                # print("each sensor data: ", field[f].json())
+                graph_data = field[f].json().get("value", [])
+                print("Graph data for field", f, ":", graph_data)
+                
+                if f == "pm2.5_ug_m3":
+                    if graph_data and len(graph_data) > 0 :
+                        try:
+                            
+                            pm25 = float(graph_data[-1])
+                           
+                        except:
+                            pm25 = 0
+                    else:
+                        pm25 = float(value)
+                elif f == "pressure_hPa":
+                    if graph_data and len(graph_data) > 0:
+                        try:
+                            pressure = float(graph_data[-1])
+                        except:
+                            pressure = 0
+                    else:
+                        pressure = 0
+                elif f == "temperature_C":
+                    if graph_data and len(graph_data) > 0:
+                        try:
+                            temperature = float(graph_data[-1])
+                        except:
+                            temperature = 0
+                    else:
+                        temperature = 0
+                elif f == "humidity_percent":    
+                    if graph_data and len(graph_data) > 0:
+                        try:
+                            humidity = float(graph_data[-1])
+                        except:
+                            humidity = 0
+                    else:
+                        humidity = 0
                 try:
-                    pm25 = float(graph_data[-1].get("value", value))
-                except:
-                    pm25 = float(value)
-            else:
-                pm25 = float(value)
-            
-            try:
-                last_updated = datetime.fromisoformat(timestamp_str)
-            except Exception:
-                last_updated = datetime.now()
+                    last_updated = datetime.fromisoformat(timestamp_str)
+                except Exception:
+                    last_updated = datetime.now()
             
             sensor_obj = Sensor(
                 id=idN,
                 name=name,
                 location=Location(lat=float(latitude), lng=float(longitude)),
                 pm25=pm25,
-                temperature=random_in_range(18, 35),
-                humidity=random_in_range(30, 80),
-                pressure=random_in_range(990, 1030),
+                temperature=temperature,
+                humidity=humidity,
+                pressure=pressure,
                 lastUpdated=last_updated,
                 aqi=calculate_aqi(pm25),
                 aqiCategory=get_aqi_category(pm25)
@@ -213,6 +208,7 @@ def generate_sensors(sensor_json: dict) -> List[Sensor]:
             sensors.append(sensor_obj)
         except Exception as e:
             print(f"Error processing sensor {sensor_data.get('name')}: {e}")
+    # print(sensors)
     return sensors
 
 def generate_historical_data(days: int = 7, points_per_day: int = 24, baseline_pm25: float = 15) -> List[HistoricalDataPoint]:
