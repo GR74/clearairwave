@@ -1,13 +1,12 @@
-
 import React, { useState } from 'react';
 import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Filter } from 'lucide-react';
-import { sensors } from '@/utils/dummyData';
 import { getAQICategory, formatPM25 } from '@/utils/aqiUtils';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { sensors } from '@/utils/dummyData';
 
 const categories = ['Good', 'Moderate', 'Unhealthy for Sensitive Groups', 'Unhealthy', 'Very Unhealthy', 'Hazardous'];
 

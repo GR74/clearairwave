@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Line, Bar, LineChart, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { historicalData, hourlyData } from '@/utils/dummyData';

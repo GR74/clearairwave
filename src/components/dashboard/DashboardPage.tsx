@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Wind, 
   Thermometer, 
@@ -16,16 +15,85 @@ import AQIChart from './AQIChart';
 import DataTable from './DataTable';
 import DataCard from '@/components/ui/DataCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const DashboardPage = () => {
   const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d'>('24h');
-  const stats = calculateStatistics(sensors);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [currentSensors, setCurrentSensors] = useState(sensors);
+  const [currentHourlyData, setCurrentHourlyData] = useState(hourlyData);
+  
+  // Refresh data periodically
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        // In a real implementation, you would fetch data here
+        // For now, we'll just use the data from dummyData.ts
+        setCurrentSensors(sensors);
+        setCurrentHourlyData(hourlyData);
+        setIsLoading(false);
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error('Failed to fetch data'));
+        setIsLoading(false);
+      }
+    };
+    
+    // Initial fetch
+    fetchData();
+    
+    // Set up interval for periodic updates
+    const intervalId = setInterval(fetchData, 60000); // Refresh every minute
+    
+    return () => clearInterval(intervalId);
+  }, []);
+  
+  if (error) {
+    return (
+      <div className="py-10">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="text-center text-red-500">
+            <h2 className="text-xl font-semibold">Error loading data</h2>
+            <p className="mt-2">{error.message}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading || !currentSensors || !currentHourlyData) {
+    return (
+      <div className="py-10">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="mb-8">
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-96 mt-2" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} className="h-32" />
+            ))}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <Skeleton className="lg:col-span-2 h-[400px]" />
+            <div className="space-y-5">
+              <Skeleton className="h-[300px]" />
+              <Skeleton className="h-[200px]" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const stats = calculateStatistics(currentSensors);
   
   // Calculate daily average
-  const dailyAvg = hourlyData.reduce((sum, item) => sum + item.pm25, 0) / hourlyData.length;
+  const dailyAvg = currentHourlyData.reduce((sum, item) => sum + item.pm25, 0) / currentHourlyData.length;
   
   // Find highest pollution sensors
-  const highestSensors = [...sensors]
+  const highestSensors = [...currentSensors]
     .sort((a, b) => b.pm25 - a.pm25)
     .slice(0, 3)
     .map(sensor => ({
@@ -39,8 +107,8 @@ const DashboardPage = () => {
   const timeDistribution = Array.from({ length: 24 }, (_, i) => {
     const hour = i;
     const hourLabel = `${hour}:00`;
-    const readingForHour = hourlyData.find(item => {
-      const itemHour = new Date(item.time).getHours();
+    const readingForHour = currentHourlyData.find(item => {
+      const itemHour = new Date(item.timestamp).getHours();
       return itemHour === hour;
     });
     
@@ -81,14 +149,14 @@ const DashboardPage = () => {
           
           <DataCard
             title="Average Temperature"
-            value={`${(sensors.reduce((sum, s) => sum + s.temperature, 0) / sensors.length).toFixed(1)} °C`}
+            value={`${(currentSensors.reduce((sum, s) => sum + s.temperature, 0) / currentSensors.length).toFixed(1)} °C`}
             icon={<Thermometer className="h-5 w-5 text-primary" />}
             description="Mean temperature across stations"
           />
           
           <DataCard
             title="Average Humidity"
-            value={`${Math.round(sensors.reduce((sum, s) => sum + s.humidity, 0) / sensors.length)}%`}
+            value={`${Math.round(currentSensors.reduce((sum, s) => sum + s.humidity, 0) / currentSensors.length)}%`}
             icon={<CloudRain className="h-5 w-5 text-primary" />}
             description="Mean humidity across stations"
           />
@@ -104,7 +172,6 @@ const DashboardPage = () => {
               <div className="flex">
                 <Tabs defaultValue="24h" value={timeRange} onValueChange={(v) => setTimeRange(v as any)}>
                   <TabsList>
-                    <TabsTrigger value="1h" className="text-xs">1h</TabsTrigger>
                     <TabsTrigger value="24h" className="text-xs">24h</TabsTrigger>
                     <TabsTrigger value="7d" className="text-xs">7 Days</TabsTrigger>
                     <TabsTrigger value="30d" className="text-xs">30 Days</TabsTrigger>

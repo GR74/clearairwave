@@ -1,4 +1,3 @@
-
 /**
  * Air Quality Index (AQI) calculation utilities
  * Based on EPA's AQI calculation method: https://www.airnow.gov/aqi/aqi-basics/
