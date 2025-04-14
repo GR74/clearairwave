@@ -116,7 +116,7 @@ def fetch_pm25_data() -> dict:
     url = (
         "https://www.simpleaq.org/api/getdata?field=pm2.5"
         "&min_lat=-90&max_lat=90&min_lon=-180&max_lon=180"
-        "&utc_epoch=1743899940000"
+        "&utc_epoch=1744612200000"
     )
     try:
         response = httpx.get(url, timeout=10.0)
@@ -127,11 +127,44 @@ def fetch_pm25_data() -> dict:
     except Exception as e:
         print("Error fetching PM2.5 data:", str(e))
         return {}
+    
+def fetch_relative_humidity_data() -> dict:
+    url = (
+        "https://www.simpleaq.org/api/getdata?field=relativehumidity"
+        "&min_lat=-90&max_lat=90&min_lon=-180&max_lon=180"
+        "&utc_epoch=1744612200000"
+    )
+    try:
+        response = httpx.get(url, timeout=10.0)
+        response.raise_for_status()
+        print("Fetched relative humidity data")
+        return response.json()
+    except Exception as e:
+        print("Error fetching relative humidity data:", str(e))
+        return {}
+
+def fetch_temperature_data() -> dict:
+    url = (
+        "https://www.simpleaq.org/api/getdata?field=temperature"
+        "&min_lat=-90&max_lat=90&min_lon=-180&max_lon=180"
+        "&utc_epoch=1744612200000"
+    )
+    try:
+        response = httpx.get(url, timeout=10.0)
+        response.raise_for_status()
+        print("Fetched temperature data")
+        return response.json()
+    except Exception as e:
+        print("Error fetching temperature data:", str(e))
+        return {}
+    
 
 def random_in_range(min_val: float, max_val: float) -> float:
     return random.uniform(min_val, max_val)
 
 def generate_sensors(sensor_json: dict) -> List[Sensor]:
+    humidity_data = fetch_relative_humidity_data()
+    temperature_data = fetch_temperature_data()  # Fetch temperature data
     sensors = []
     for sensor_id, sensor_data in sensor_json.items():
         try:
@@ -141,8 +174,7 @@ def generate_sensors(sensor_json: dict) -> List[Sensor]:
             longitude = sensor_data.get("longitude")
             timestamp_str = sensor_data.get("timestamp")
             value = sensor_data.get("value")
-            
-            # Fetch additional graph data for PM2.5
+            # Fetch PM2.5 graph data
             field = "pm2.5_ug_m3"
             range_hours = 1
             url = f"https://www.simpleaq.org/api/getgraphdata?id={idN}&field={field}&rangehours={range_hours}&time={timestamp_str}"
@@ -150,7 +182,6 @@ def generate_sensors(sensor_json: dict) -> List[Sensor]:
             r.raise_for_status()
             print("each sensor data: ", r.json())
             graph_data = r.json().get("data", [])
-            
             if graph_data and len(graph_data) > 0:
                 try:
                     pm25 = float(graph_data[-1].get("value", value))
@@ -158,19 +189,29 @@ def generate_sensors(sensor_json: dict) -> List[Sensor]:
                     pm25 = float(value)
             else:
                 pm25 = float(value)
-            
             try:
                 last_updated = datetime.fromisoformat(timestamp_str)
-            except Exception:
+            except:
                 last_updated = datetime.now()
-            
+            # Fetch relative humidity
+            humidity_value = None
+            if humidity_data and sensor_id in humidity_data:
+                humidity_value = float(humidity_data[sensor_id].get("value", None))
+            if humidity_value is None:
+                humidity_value = random_in_range(30, 80)
+            # Fetch temperature
+            temperature_value = None
+            if temperature_data and sensor_id in temperature_data:
+                temperature_value = float(temperature_data[sensor_id].get("value", None))
+            if temperature_value is None:
+                temperature_value = random_in_range(18, 35)  # Fallback to random temperature
             sensor_obj = Sensor(
                 id=idN,
                 name=name,
                 location=Location(lat=float(latitude), lng=float(longitude)),
                 pm25=pm25,
-                temperature=random_in_range(18, 35),
-                humidity=random_in_range(30, 80),
+                temperature=temperature_value,  # Use fetched or fallback temperature
+                humidity=humidity_value,
                 pressure=random_in_range(990, 1030),
                 lastUpdated=last_updated,
                 aqi=calculate_aqi(pm25),
@@ -179,7 +220,6 @@ def generate_sensors(sensor_json: dict) -> List[Sensor]:
             sensors.append(sensor_obj)
         except Exception as e:
             print(f"Error processing sensor {sensor_data.get('name')}: {e}")
-    # print(sensors)
     return sensors
 
 def generate_historical_data(days: int = 7, points_per_day: int = 24, baseline_pm25: float = 15) -> List[HistoricalDataPoint]:
