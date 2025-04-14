@@ -1,24 +1,73 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import Header from '@/components/Header';
 import AQMap from '@/components/AQMap';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { sensors } from '@/utils/dummyData';
 import { formatPM25 } from '@/utils/aqiUtils';
 import { Users, AlertCircle, ArrowUpRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const Map = () => {
+  const [realSensors, setRealSensors] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  // Fetch real-time sensor data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await axios.get("http://localhost:3001/api/sensors");
+        setRealSensors(response.data); // Set real sensor data
+        setIsLoading(false);
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error('Failed to fetch sensor data'));
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+    const intervalId = setInterval(fetchData, 60000); // Refresh every minute
+    return () => clearInterval(intervalId);
+  }, []);
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-white to-secondary/20">
+        <Header />
+        <main className="pt-16">
+          <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8 text-center text-red-500">
+            <h2 className="text-xl font-semibold">Error loading map data</h2>
+            <p className="mt-2">{error.message}</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-white to-secondary/20">
+        <Header />
+        <main className="pt-16">
+          <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8 flex items-center justify-center">
+            <div className="text-center">Loading...</div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   // Count sensors by category
   const sensorCounts = {
-    good: sensors.filter(s => s.aqiCategory?.category === 'Good').length,
-    moderate: sensors.filter(s => s.aqiCategory?.category === 'Moderate').length,
-    unhealthy: sensors.filter(s => s.aqiCategory?.category === 'Unhealthy').length,
-    hazardous: sensors.filter(s => s.aqiCategory?.category === 'Hazardous').length,
+    good: realSensors.filter(s => s.aqiCategory?.category === 'Good').length,
+    moderate: realSensors.filter(s => s.aqiCategory?.category === 'Moderate').length,
+    unhealthy: realSensors.filter(s => s.aqiCategory?.category === 'Unhealthy').length,
+    hazardous: realSensors.filter(s => s.aqiCategory?.category === 'Hazardous').length,
   };
 
   // Find areas with highest pollution
-  const highestPollution = [...sensors]
+  const highestPollution = [...realSensors]
     .sort((a, b) => b.pm25 - a.pm25)
     .slice(0, 3)
     .map(sensor => ({
@@ -41,7 +90,7 @@ const Map = () => {
                 Explore real-time air quality readings from sensors across the community
               </p>
             </div>
-            
+
             <Tabs defaultValue="map">
               <TabsList>
                 <TabsTrigger value="map">Map View</TabsTrigger>
@@ -50,7 +99,7 @@ const Map = () => {
               </TabsList>
             </Tabs>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="glass-card p-4 rounded-xl bg-gradient-to-br from-white to-green-50 shadow-md border border-white/20">
               <div className="flex items-center justify-between">
@@ -63,7 +112,7 @@ const Map = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="glass-card p-4 rounded-xl bg-gradient-to-br from-white to-yellow-50 shadow-md border border-white/20">
               <div className="flex items-center justify-between">
                 <div>
@@ -75,7 +124,7 @@ const Map = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="glass-card p-4 rounded-xl bg-gradient-to-br from-white to-red-50 shadow-md border border-white/20">
               <div className="flex items-center justify-between">
                 <div>
@@ -87,7 +136,7 @@ const Map = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="glass-card p-4 rounded-xl bg-gradient-to-br from-white to-purple-50 shadow-md border border-white/20">
               <div className="flex items-center justify-between">
                 <div>
@@ -100,26 +149,26 @@ const Map = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="md:col-span-3">
               <div className="h-[700px] glass-card rounded-xl shadow-lg overflow-hidden border border-white/20">
                 <AQMap />
               </div>
             </div>
-            
+
             <div className="space-y-6">
               <div className="glass-card p-5 rounded-xl shadow-md border border-white/20">
                 <div className="flex items-center justify-between mb-4">
                   <div className="text-lg font-medium">Hotspots</div>
                   <AlertCircle className="h-5 w-5 text-aqi-unhealthy" />
                 </div>
-                
+
                 <div className="space-y-4">
                   {highestPollution.map((area, i) => (
                     <div key={i} className="flex items-center gap-3">
-                      <div 
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-white" 
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-white"
                         style={{ backgroundColor: area.color }}
                       >
                         {i + 1}
@@ -131,7 +180,7 @@ const Map = () => {
                     </div>
                   ))}
                 </div>
-                
+
                 <div className="mt-4 pt-4 border-t">
                   <Button variant="outline" size="sm" className="w-full">
                     <span>View All</span>
@@ -139,33 +188,33 @@ const Map = () => {
                   </Button>
                 </div>
               </div>
-              
+
               <div className="glass-card p-5 rounded-xl shadow-md border border-white/20">
                 <div className="flex items-center justify-between mb-4">
                   <div className="text-lg font-medium">Community</div>
                   <Users className="h-5 w-5 text-primary" />
                 </div>
-                
+
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Active Sensors</span>
-                    <span className="font-medium">{sensors.length}</span>
+                    <span className="font-medium">{realSensors.length}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Community Contributors</span>
-                    <span className="font-medium">42</span>
+                    <span className="font-medium">3</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Data Points Today</span>
-                    <span className="font-medium">24,816</span>
+                    <span className="font-medium">Not yet updated</span>
                   </div>
                 </div>
-                
+
                 <div className="mt-4 pt-4 border-t">
                   <Button variant="outline" size="sm" className="w-full">Join Community</Button>
                 </div>
               </div>
-              
+
               <div className="glass-card p-5 rounded-xl shadow-md border border-white/20 bg-gradient-to-br from-primary/5 to-blue-400/10">
                 <div className="text-center">
                   <h3 className="text-lg font-medium mb-2">Become a Sensor Host</h3>
