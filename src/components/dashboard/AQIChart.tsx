@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Line, Bar, LineChart, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { historicalData, hourlyData } from '@/utils/dummyData';
+import axios from 'axios';
+import { historicalData } from '@/utils/dummyData';
 import { formatPM25 } from '@/utils/aqiUtils';
 
 interface AQIChartProps {
@@ -18,13 +19,37 @@ const AQIChart: React.FC<AQIChartProps> = ({
   sensorId = 'sensor-2',
   height = 300
 }) => {
+  const [hourlyData, setHourlyData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchHourlyData = async () => {
+      try {
+        const response = await axios.get('http://localhost:3001/api/hourly');
+        const formattedData = response.data.map((item: any) => ({
+          ...item,
+          time: new Date(item.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        }));
+        setHourlyData(formattedData);
+        setError(null);
+      } catch (err) {
+        setError('Failed to fetch hourly data');
+        console.error('Error fetching hourly data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (timeRange === '24h') {
+      fetchHourlyData();
+    }
+  }, [timeRange]);
+
   // If no custom data is provided, use the appropriate data based on timeRange
   const chartData = data || (() => {
     if (timeRange === '24h') {
-      return hourlyData.map(item => ({
-        ...item,
-        time: new Date(item.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      }));
+      return hourlyData;
     } else {
       // Use historical data for the specified sensor
       const sensorData = historicalData[sensorId] || [];
@@ -45,7 +70,7 @@ const AQIChart: React.FC<AQIChartProps> = ({
   })();
 
   // Determine the y-axis domain based on the data
-  const maxPM25 = Math.max(...chartData.map((d: any) => d.pm25)) * 1.2;
+  const maxPM25 = Math.ceil(Math.min(Math.max(...chartData.map((d: any) => d.pm25)) * 1.2, 500)); // Cap at 500 µg/m³ and round up
   
   // Custom tooltip formatter
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -63,6 +88,14 @@ const AQIChart: React.FC<AQIChartProps> = ({
     }
     return null;
   };
+
+  if (loading && timeRange === '24h') {
+    return <div className="w-full h-[300px] flex items-center justify-center">Loading...</div>;
+  }
+
+  if (error && timeRange === '24h') {
+    return <div className="w-full h-[300px] flex items-center justify-center text-red-500">{error}</div>;
+  }
   
   return (
     <div className="w-full overflow-hidden">
