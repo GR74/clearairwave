@@ -6,6 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatPM25 } from '@/utils/aqiUtils';
 import { Users, AlertCircle, ArrowUpRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
+
 
 const Map = () => {
   const [realSensors, setRealSensors] = useState<any[]>([]);
@@ -176,15 +178,12 @@ const Map = () => {
                 </div>
 
                 <div className="mt-4 pt-4 border-t">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => window.location.href = "/dashboard"}
-                  >
+                <Link to="/dashboard#allSensors" className="w-full">
+                <Button variant="outline" size="sm" className="w-full">
                   <span>View All</span>
                   <ArrowUpRight className="h-3 w-3 ml-1" />
                 </Button>
+                </Link>
                 </div>
               </div>
 
@@ -209,12 +208,19 @@ const Map = () => {
                   </div>
                 </div>
 
-                <div className="mt-4 pt-4 border-t">
-                  <Button variant="outline" size="sm" className="w-full">Join Community</Button>
+                <div className="mt-4 pt-4 border-t space-y-2">
+                  <Link to="https://www.facebook.com/groups/904509544135710/" className="block w-full">
+                  <Button variant="outline" size="sm" className="w-full "> Join Community </Button>
+                  </Link>
+
+                  <Link to="/contact" className="block w-full ">
+                  <Button size="sm" className="w-full">Host a Sensor</Button>
+                  </Link>
+                  
                 </div>
               </div>
 
-              <div className="glass-card p-5 rounded-xl shadow-md border border-white/20 bg-gradient-to-br from-primary/5 to-blue-400/10">
+              {/* <div className="glass-card p-5 rounded-xl shadow-md border border-white/20 bg-gradient-to-br from-primary/5 to-blue-400/10">
                 <div className="text-center">
                   <h3 className="text-lg font-medium mb-2">Become a Sensor Host</h3>
                   <p className="text-sm text-muted-foreground mb-4">
@@ -222,7 +228,7 @@ const Map = () => {
                   </p>
                   <Button size="sm" className="w-full">Learn More</Button>
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>

@@ -1,0 +1,20 @@
+{
+    "compilerOptions": {
+      "module": "ESNext",
+      "target": "ES2020",
+      "moduleResolution": "bundler",
+      "esModuleInterop": true,
+      "moduleDetection": "force",
+      "resolveJsonModule": true,
+      "allowSyntheticDefaultImports": true,
+      "allowJs": true,
+      "strict": true,
+      "skipLibCheck": true,
+      "outDir": "./dist"
+    },
+    "ts-node": {
+      "esm": true
+    },
+    "include": ["./realData.ts"]
+  }
+  

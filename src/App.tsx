@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Map from "./pages/Map";
+import Contact from "./pages/Contact"
 import NotFound from "./pages/NotFound";
 import { useEffect } from "react";
 
@@ -44,6 +45,8 @@ const App = () => {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/map" element={<Map />} />
             <Route path="*" element={<NotFound />} />
+            <Route path="/contact" element={<Contact />} />
+
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
