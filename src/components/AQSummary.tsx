@@ -1,21 +1,76 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
 import { ArrowUpRight, ArrowDown, ArrowUp } from 'lucide-react';
-import { calculateStatistics, sensors, hourlyData } from '@/utils/dummyData';
 import { getAQICategory, formatPM25, getHealthRecommendations } from '@/utils/aqiUtils';
+import {calculateStatistics} from '@/utils/dummyData'
 import { cn } from '@/lib/utils';
 
 const AQSummary = () => {
-  const stats = calculateStatistics(sensors);
+  const [realSensors, setRealSensors] = useState<any[]>([]);
+  const [hourlyData, setHourlyData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  // Fetch real-time sensor and hourly data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const [sensorResponse, hourlyResponse] = await Promise.all([
+          axios.get("http://localhost:3001/api/sensors"),
+          axios.get("http://localhost:3001/api/hourly"),
+        ]);
+        setRealSensors(sensorResponse.data);
+        setHourlyData(hourlyResponse.data);
+        setIsLoading(false);
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error('Failed to fetch data'));
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+    const intervalId = setInterval(fetchData, 60000); // Refresh every minute
+    return () => clearInterval(intervalId);
+  }, []);
+
+  if (error) {
+    return (
+      <section className="py-16 bg-gradient-to-b from-white to-blue-50">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="text-center text-red-500">
+            <h2 className="text-xl font-semibold">Error loading air quality summary</h2>
+            <p className="mt-2">{error.message}</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (isLoading || !realSensors || !hourlyData) {
+    return (
+      <section className="py-16 bg-gradient-to-b from-white to-blue-50">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="space-y-4">
+            <div className="h-8 w-64 bg-gray-200 animate-pulse rounded"></div>
+            <div className="h-6 w-96 bg-gray-200 animate-pulse rounded"></div>
+            <div className="h-48 bg-gray-200 animate-pulse rounded-lg"></div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  const stats = calculateStatistics(realSensors);
   const currentAvgPM25 = stats.averagePM25;
   const avgAQICategory = getAQICategory(currentAvgPM25);
-  
+
   // Check trend by comparing with 3 hours ago
   const threeHoursAgo = hourlyData[hourlyData.length - 4]?.pm25 || currentAvgPM25;
   const isImproving = currentAvgPM25 < threeHoursAgo;
   const changePercent = Math.round(Math.abs(currentAvgPM25 - threeHoursAgo) / threeHoursAgo * 100);
-  
+
   const healthRecommendation = getHealthRecommendations(avgAQICategory.category);
 
   return (
@@ -24,7 +79,7 @@ const AQSummary = () => {
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-8">
           <div className="flex-1 space-y-6 max-w-xl">
             <h2 className="text-3xl font-semibold tracking-tight">Current Air Quality Status</h2>
-            
+
             <div className="flex items-start gap-4">
               <div>
                 <div 
@@ -35,7 +90,7 @@ const AQSummary = () => {
                 </div>
                 <div className="text-sm text-muted-foreground mt-1">µg/m³ (PM2.5)</div>
               </div>
-              
+
               <div className="flex-1 mt-1">
                 <div 
                   className={cn(
@@ -49,7 +104,7 @@ const AQSummary = () => {
                 >
                   {avgAQICategory.category}
                 </div>
-                
+
                 <div className="flex items-center mt-2 text-sm">
                   <span 
                     className={cn(
@@ -67,11 +122,11 @@ const AQSummary = () => {
                 </div>
               </div>
             </div>
-            
+
             <p className="text-muted-foreground">
               {healthRecommendation}
             </p>
-            
+
             <div>
               <Link 
                 to="/dashboard" 
@@ -82,11 +137,11 @@ const AQSummary = () => {
               </Link>
             </div>
           </div>
-          
+
           <div className="flex-1">
             <div className="glass-card rounded-xl p-6">
-              <h3 className="text-lg font-medium mb-4">Air Quality Index Scale</h3>
-              
+              <h3 className="text-lg font-medium mb-4">Air Quality Index Scale Based on PM2.5</h3>
+
               <div className="space-y-3">
                 {[
                   { label: 'Good', range: '0-12 µg/m³', color: '#4ade80' },

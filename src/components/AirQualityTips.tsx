@@ -79,13 +79,9 @@ const AirQualityTips = () => {
             <TipCard key={index} {...tip} />
           ))}
         </div>
-        
-        <div className="mt-12 text-center">
-          <Button size="lg" className="rounded-full">
-            View More Health Tips
-          </Button>
-        </div>
       </div>
+          <br></br>
+          <hr></hr>
     </section>
   );
 };
