@@ -1,8 +1,7 @@
 import express from "express";
 import axios from "axios";
 import cors from "cors";
-import { calculateAQI, getAQICategory } from "./aqiUtils"; // Update path as needed
-
+import { calculateAQI, getAQICategory } from "./utils/aqiUtils"; // Update path as needed
 
 const app = express();
 const PORT = 3001;
@@ -187,82 +186,10 @@ let historicalData: Record<string, HistoricalDataPoint[]> = {};
 let hourlyData = [];
 let statistics = {};
 
-let previousCategories: Record<string, string> = {}; // sensor.id => last known category
-
-
 async function refreshData() {
   try {
     const raw = await fetchPM25Data();
-    sensors = await generateSensors(raw); //fetches live data
-
-    // TEST SENSOR
-sensors.push({
-  id: "test-sensor-001",
-  name: "🔥 Test Sensor",
-  location: { lat: 40.0, lng: -82.0 },
-  pm25: 100, // BAD air quality
-  temperature: 25,
-  humidity: 50,
-  pressure: 1010,
-  lastUpdated: new Date(),
-  aqi: calculateAQI(100),
-  aqiCategory: getAQICategory(100),
-});
-
-
-
-    //added logic to trigger if a sensor JUST changes from healthy to unhealthy
-    const triggeredSensors: Sensor[] = [];
-
-  //TEST
-  previousCategories["test-sensor-001"] = "Good"; // Simulate transition from safe to unhealthy
-
-
-    sensors.forEach(sensor => {
-    const prevCategory = previousCategories[sensor.id];
-    const newCategory = sensor.aqiCategory?.category;
-
-    const isNowDangerous = ['Unhealthy', 'Very Unhealthy', 'Hazardous'].includes(newCategory);
-    const wasSafeBefore = !['Unhealthy', 'Very Unhealthy', 'Hazardous'].includes(prevCategory);
-
-    if (isNowDangerous && wasSafeBefore) {
-      triggeredSensors.push(sensor); // This sensor just crossed into danger
-    }
-
-    // Update the previous category
-    previousCategories[sensor.id] = newCategory;
-    });
-
-    if (triggeredSensors.length > 0) {
-      //sends everything in the list of sensors to our pipedream integration service
-      for (const sensor of triggeredSensors) {
-        try {
-          await axios.post("https://eo3nb8qkt3n52xu.m.pipedream.net", {
-            sensorId: sensor.id,
-            sensorName: sensor.name,
-            pm25: sensor.pm25,
-            aqi: sensor.aqi,
-            category: sensor.aqiCategory?.category,
-            timestamp: sensor.lastUpdated,
-            location: sensor.location,
-          });
-      
-          console.log(`📨 Alert sent for sensor ${sensor.name}`);
-        } catch (err) {
-          console.error(`❌ Failed to send alert for ${sensor.name}:`, err.message);
-        }
-      }
-      
-    console.log("⚠️ Triggered sensors:", triggeredSensors.map(s => ({
-      name: s.name,
-      aqi: s.aqi,
-      category: s.aqiCategory?.category,
-      pm25: s.pm25.toFixed(1),
-      time: s.lastUpdated.toISOString()
-    })));
-    }
-
-
+    sensors = await generateSensors(raw);
     historicalData = sensors.reduce((acc, sensor) => {
       acc[sensor.id] = generateHistoricalData(7, 24, sensor.pm25 * 0.8);
       return acc;
@@ -286,8 +213,6 @@ app.get("/api/sensors", (req, res) => res.json(sensors));
 app.get("/api/historical", (req, res) => res.json(historicalData));
 app.get("/api/hourly", (req, res) => res.json(hourlyData));
 app.get("/api/statistics", (req, res) => res.json(statistics));
-
-refreshData();
 
 // ------------------------
 app.listen(PORT, () => {
