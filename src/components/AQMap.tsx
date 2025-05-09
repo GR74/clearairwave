@@ -112,9 +112,10 @@ const AQMap = () => {
         className="z-0"
       >
         <TileLayer
-          attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>'
-          url="https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png"
-        />
+  attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+  url="https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+/>
+
 
         {/* Fit bounds to cover all markers */}
         <FitBounds sensors={sensors} />
