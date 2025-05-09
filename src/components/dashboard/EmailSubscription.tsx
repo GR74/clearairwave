@@ -33,7 +33,7 @@ const EmailSubscription = () => {
   return (
     <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white py-10 px-6 rounded-lg shadow-lg">
       <div className="max-w-2xl mx-auto text-center">
-        <h2 className="text-3xl font-bold mb-2">📢 Stay Updated</h2>
+        <h2 className="text-3xl font-bold mb-2">🔔 Stay Updated</h2>
         <p className="text-lg opacity-90 mb-6">
           Subscribe to receive real-time air quality alerts and updates.
         </p>

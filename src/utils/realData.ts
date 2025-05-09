@@ -149,6 +149,7 @@ export const generate24HourData = () => {
       basePM25 *= 0.7 + Math.random() * 0.3;
     }
 
+
     data.push({
       timestamp,
       pm25: basePM25 * (0.8 + Math.random() * 0.4),

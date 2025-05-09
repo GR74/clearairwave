@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Wind, 
-  Thermometer, 
-  CloudRain, 
+import {
+  Wind,
+  Thermometer,
+  CloudRain,
   AlertCircle,
 } from 'lucide-react';
 import axios from 'axios';
@@ -12,22 +12,63 @@ import DataTable from './DataTable';
 import DataCard from '@/components/ui/DataCard';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useLocation } from 'react-router-dom';
 
 const DashboardPage = () => {
+
+//Fetches sensor names for the dropdown for the AQIChart
+const [sensorNames, setSensorNames] = useState<string[]>([]);
+const [selectedSensor, setSelectedSensor] = useState('');
+
+useEffect(() => {
+  const fetchSensorNames = async () => {
+    try {
+      const response = await axios.get('http://localhost:3001/api/sensors');
+      const sensors = response.data;
+
+      // Extract the 'name' field from each object
+      const names = sensors.map((sensor: any) => sensor.name);
+
+      // Set into state
+      setSensorNames(names);
+
+      // Optionally pre-select the first one
+      if (names.length > 0) setSelectedSensor(names[0]);
+    } catch (error) {
+      console.error('Failed to fetch sensor names:', error);
+    }
+  };
+
+  fetchSensorNames();
+}, []);
+
+//Allows routing to specific parts of this page using id hashing
+  const location = useLocation();
+  useEffect(() => {
+    const hash = location.hash;
+    if (hash) {
+      setTimeout(() => {
+        const el = document.querySelector(hash);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+    }
+  }, [location]);
+
   const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d'>('24h');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [realSensors, setRealSensors] = useState<any[]>([]);
   const [hourlyData, setHourlyData] = useState<any[]>([]);
 
-  // Fetch real-time sensor and hourly data
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
         const [sensorResponse, hourlyResponse] = await Promise.all([
-          axios.get("http://localhost:3001/api/sensors"),
-          axios.get("http://localhost:3001/api/hourly"),
+          axios.get('http://localhost:3001/api/sensors'),
+          axios.get('http://localhost:3001/api/hourly'),
         ]);
         setRealSensors(sensorResponse.data);
         setHourlyData(hourlyResponse.data);
@@ -39,7 +80,7 @@ const DashboardPage = () => {
     };
 
     fetchData();
-    const intervalId = setInterval(fetchData, 60000); // Refresh every minute
+    const intervalId = setInterval(fetchData, 60000);
     return () => clearInterval(intervalId);
   }, []);
 
@@ -81,17 +122,14 @@ const DashboardPage = () => {
     );
   }
 
-  // Calculate statistics
   const stats = {
     averagePM25: realSensors.reduce((sum, s) => sum + s.pm25, 0) / realSensors.length,
     maxPM25: Math.max(...realSensors.map(s => s.pm25)),
     minPM25: Math.min(...realSensors.map(s => s.pm25)),
   };
 
-  // Calculate daily average
   const dailyAvg = hourlyData.reduce((sum, item) => sum + item.pm25, 0) / hourlyData.length;
 
-  // Find highest pollution sensors
   const highestSensors = [...realSensors]
     .sort((a, b) => b.pm25 - a.pm25)
     .slice(0, 3)
@@ -99,20 +137,16 @@ const DashboardPage = () => {
       name: sensor.name,
       value: sensor.pm25,
       category: sensor.aqiCategory?.category || 'Unknown',
-      color: sensor.aqiCategory?.color || '#000'
+      color: sensor.aqiCategory?.color || '#000',
     }));
 
-  // Prepare data for the daily distribution chart
   const timeDistribution = Array.from({ length: 24 }, (_, i) => {
     const hour = i;
     const hourLabel = `${hour}:00`;
-    const readingForHour = hourlyData.find(item => {
-      const itemHour = new Date(item.time).getHours();
-      return itemHour === hour;
-    });
+    const readingForHour = hourlyData.find(item => new Date(item.time).getHours() === hour);
     return {
       time: hourLabel,
-      pm25: readingForHour?.pm25 || 0
+      pm25: readingForHour?.pm25 || 0,
     };
   });
 
@@ -126,7 +160,6 @@ const DashboardPage = () => {
           </p>
         </div>
 
-        {/* Stat Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
           <DataCard
             title="Current Average PM2.5"
@@ -135,7 +168,7 @@ const DashboardPage = () => {
             description="Mean value across all stations"
             trend={{
               value: Math.round((stats.averagePM25 - dailyAvg) / dailyAvg * 100),
-              isIncreasing: stats.averagePM25 > dailyAvg
+              isIncreasing: stats.averagePM25 > dailyAvg,
             }}
           />
           <DataCard
@@ -158,28 +191,38 @@ const DashboardPage = () => {
           />
         </div>
 
-        {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
-          {/* Main Line Chart */}
           <div className="lg:col-span-2 glass-card rounded-lg p-5">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-4">
-              <h3 className="text-lg font-medium">Air Quality Trend</h3>
-              <div className="flex">
+              <div className="flex flex-col space-y-2">
+                <h3 className="text-lg font-medium">Air Quality Trend</h3>
                 <Tabs defaultValue="24h" value={timeRange} onValueChange={(v) => setTimeRange(v as any)}>
-                  <TabsList>
+                  <TabsList className="w-fit">
                     <TabsTrigger value="24h" className="text-xs">24h</TabsTrigger>
                     <TabsTrigger value="7d" className="text-xs">7 Days</TabsTrigger>
                     <TabsTrigger value="30d" className="text-xs">30 Days</TabsTrigger>
                   </TabsList>
                 </Tabs>
               </div>
+              <div className="flex flex-col">
+                <label className="text-xs text-muted-foreground mb-2">Sensor:</label>
+              <select
+              value={selectedSensor}
+              onChange={(e) => setSelectedSensor(e.target.value)}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              >
+                {sensorNames.map((name, idx) => (
+                  <option key={idx} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+              </div>
             </div>
-            <AQIChart type="line" timeRange={timeRange} height={300} />
+            <AQIChart type="line" timeRange={timeRange} sensorId={selectedSensor} height={280} />
           </div>
 
-          {/* Sidebar with stats and smaller charts */}
           <div className="space-y-5">
-            {/* Time Distribution */}
             <div className="glass-card rounded-lg p-5">
               <div className="mb-4">
                 <div className="text-lg font-medium mb-1">Daily Distribution</div>
@@ -188,7 +231,6 @@ const DashboardPage = () => {
               <AQIChart type="bar" data={timeDistribution} height={220} />
             </div>
 
-            {/* Pollution Hotspots */}
             <div className="glass-card rounded-lg p-5">
               <div className="mb-4">
                 <div className="text-lg font-medium mb-1">Pollution Hotspots</div>
@@ -197,7 +239,7 @@ const DashboardPage = () => {
               <div className="space-y-4">
                 {highestSensors.map((sensor, index) => (
                   <div key={index} className="flex items-center">
-                    <div 
+                    <div
                       className="w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-sm flex-shrink-0"
                       style={{ backgroundColor: sensor.color }}
                     >
@@ -207,12 +249,9 @@ const DashboardPage = () => {
                       <div className="font-medium text-sm">{sensor.name}</div>
                       <div className="text-xs text-muted-foreground">{formatPM25(sensor.value)} µg/m³</div>
                     </div>
-                    <div 
+                    <div
                       className="text-xs font-medium px-2 py-0.5 rounded-full"
-                      style={{ 
-                        backgroundColor: `${sensor.color}15`,
-                        color: sensor.color
-                      }}
+                      style={{ backgroundColor: `${sensor.color}15`, color: sensor.color }}
                     >
                       {sensor.category}
                     </div>
@@ -223,7 +262,7 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        {/* Data Table */}
+        <div id="allSensors"></div>
         <DataTable />
       </div>
     </div>
