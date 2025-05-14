@@ -10,6 +10,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  Text,
 } from 'recharts';
 import axios from 'axios';
 import { formatPM25 } from '@/utils/aqiUtils';
@@ -47,14 +48,18 @@ const AQIChart: React.FC<AQIChartProps> = ({
         let responseData;
     
         if (timeRange === '24h') {
-          // Fetch real 24-hour data from /api/hourly
-          const response = await axios.get('http://localhost:3001/api/hourly');
+          const response = await axios.get('http://localhost:3001/api/hourly', {
+            params: { sensor_id: sensorId },
+          });
+        
           responseData = response.data.map(item => ({
-            ...item,
             time: new Date(item.time).toLocaleTimeString([], {
               hour: '2-digit',
               minute: '2-digit',
             }),
+            pm25: item.pm25,
+            temperature: item.temperature,
+            humidity: item.humidity,
           }));
         } else {
           // Fetch simulated data from /api/historical
@@ -97,10 +102,17 @@ const AQIChart: React.FC<AQIChartProps> = ({
 
   const finalData = data || chartData;
 
-  const maxPM25 =
-    finalData.length > 0
-      ? Math.ceil(Math.min(Math.max(...finalData.map(d => d.pm25 || 0)) * 1.2, 500))
-      : 500;
+  const getMaxValue = () => {
+    const values = finalData.map(d => d[selectedMetric] ?? 0);
+    const max = Math.max(...values);
+    if (selectedMetric === 'pm25') return Math.ceil(Math.min(max * 1.2, 500));
+    if (selectedMetric === 'temperature') return Math.ceil(max + 5);
+    if (selectedMetric === 'humidity') return 100;
+    return 100;
+  };
+  
+  const maxValue = getMaxValue();
+  
 
   const hasTemperature = finalData.some(d => d.temperature !== undefined);
   const hasHumidity = finalData.some(d => d.humidity !== undefined);
@@ -143,12 +155,43 @@ const AQIChart: React.FC<AQIChartProps> = ({
         {type === 'line' ? (
           <LineChart data={finalData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="time" tick={{ fontSize: 12 }} />
+            
+<XAxis
+  dataKey="time"
+  tick={(props) => {
+    const { x, y, payload } = props;
+    return (
+      <Text
+        x={x}
+        y={y}
+        angle={-45}
+        textAnchor="end"
+        verticalAnchor="middle"
+        fontSize={10}
+        fill="#666"
+      >
+        {payload.value}
+      </Text>
+    );
+  }}
+  height={60}
+/>
+
             <YAxis
-              label={{ value: 'µg/m³', angle: -90, position: 'insideLeft' }}
-              domain={[0, maxPM25]}
-              tick={{ fontSize: 12 }}
-            />
+  label={{
+    value:
+      selectedMetric === 'pm25'
+        ? 'µg/m³'
+        : selectedMetric === 'temperature'
+        ? '°C'
+        : '%',
+    angle: -90,
+    position: 'insideLeft',
+  }}
+  domain={[0, maxValue]}
+  tick={{ fontSize: 12 }}
+/>
+
             <Tooltip content={<CustomTooltip />} />
             <Legend />
             <Line
@@ -178,15 +221,65 @@ const AQIChart: React.FC<AQIChartProps> = ({
         ) : (
           <BarChart data={finalData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="time" tick={{ fontSize: 12 }} />
+            
+<XAxis
+  dataKey="time"
+  tick={(props) => {
+    const { x, y, payload } = props;
+    return (
+      <Text
+        x={x}
+        y={y}
+        angle={-45}
+        textAnchor="end"
+        verticalAnchor="middle"
+        fontSize={10}
+        fill="#666"
+      >
+        {payload.value}
+      </Text>
+    );
+  }}
+  height={60}
+/>
+
+
             <YAxis
-              label={{ value: 'µg/m³', angle: -90, position: 'insideLeft' }}
-              domain={[0, maxPM25]}
+  label={{
+    value:
+      selectedMetric === 'pm25'
+        ? 'µg/m³'
+        : selectedMetric === 'temperature'
+        ? '°C'
+        : '%',
+    angle: -90,
+    position: 'insideLeft',
+  }}
+
+              domain={[0, maxValue]}
               tick={{ fontSize: 12 }}
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend />
-            <Bar dataKey="pm25" name="PM2.5" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+            <Bar
+  dataKey={selectedMetric}
+  name={
+    selectedMetric === 'pm25'
+      ? 'PM2.5'
+      : selectedMetric === 'temperature'
+      ? 'Temperature'
+      : 'Humidity'
+  }
+  fill={
+    selectedMetric === 'pm25'
+      ? '#3b82f6'
+      : selectedMetric === 'temperature'
+      ? '#f97316'
+      : '#0ea5e9'
+  }
+  radius={[4, 4, 0, 0]}
+/>
+
           </BarChart>
         )}
       </ResponsiveContainer>
