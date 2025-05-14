@@ -64,6 +64,22 @@ def get_health_recommendations(category: str) -> str:
 def format_pm25(pm25: float) -> str:
     return f"{pm25:.1f}"
 
+
+def fetch_latest_utc_epoch(sensor_id: str) -> int:
+    url = f"https://www.simpleaq.org/api/getmostrecentdevicepoint?id={sensor_id}"
+    try:
+        response = httpx.get(url, timeout=5.0)
+        response.raise_for_status()
+        data = response.json()
+        if data.get("found"):
+            dt = datetime.fromisoformat(data["timestamp"].replace("Z", "+00:00"))
+            return int(dt.timestamp() * 1000)
+    except Exception as e:
+        print("Error fetching latest UTC epoch:", e)
+    return int(datetime.now(timezone.utc).timestamp() * 1000)
+
+
+
 # ----------------------------------------
 # Pydantic Models for API Data
 # ----------------------------------------
@@ -120,17 +136,19 @@ DATA = {
 
 def fetch_pm25_data() -> dict:
     url = (
-        "https://www.simpleaq.org/api/getdata?field=pm2.5&min_lat=-90&max_lat=90&min_lon=-180&max_lon=180&utc_epoch=1747181760000"
+        "https://www.simpleaq.org/api/getdata?field=pm2.5"
+        "&min_lat=-90&max_lat=90&min_lon=-180&max_lon=180"
+        "&utc_epoch=1747181760000"  # static timestamp that worked
     )
     try:
         response = httpx.get(url, timeout=10.0)
         response.raise_for_status()
         print("Fetched PM2.5 data")
-        # print("Response:", response.json())
         return response.json()
     except Exception as e:
         print("Error fetching PM2.5 data:", str(e))
         return {}
+
 
 def random_in_range(min_val: float, max_val: float) -> float:
     return random.uniform(min_val, max_val)
