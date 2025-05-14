@@ -132,14 +132,27 @@ const AQIChart: React.FC<AQIChartProps> = ({
     }
     return null;
   };
-
   if ((loading && !data) || finalData.length === 0) {
     return (
-      <div className="w-full h-[300px] flex items-center justify-center">
-        {loading ? 'Loading...' : 'No data available'}
+      <div className="w-full h-[300px] flex flex-col items-center justify-center animate-fade-in">
+        <div className="relative w-16 h-16 mb-4">
+          {/* Outer Ring - Orbit Spin */}
+          <div className="absolute inset-0 rounded-full border-[6px] border-t-transparent border-l-transparent border-aqi.good animate-spin-slow blur-sm opacity-100 shadow-[0_0_20px_#4ade80]" />
+  
+          {/* Middle Ring - Reverse Spin */}
+          <div className="absolute inset-1 rounded-full border-[4px] border-r-transparent border-b-transparent border-aqi.moderate animate-spin-reverse blur-sm opacity-100" />
+  
+          {/* Core Pulse Dot */}
+          <div className="absolute top-1/2 left-1/2 w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-aqi.hazardous animate-ping-slow shadow-md" />
+        </div>
+  
+        <p className="text-sm text-center text-muted-foreground animate-pulse-slow tracking-wide">
+          {loading ? 'Fetching real-time air quality data...' : 'No data available'}
+        </p>
       </div>
     );
   }
+  
 
   if (error) {
     return (
