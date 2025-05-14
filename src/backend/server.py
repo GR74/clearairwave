@@ -96,8 +96,12 @@ class HistoricalDataPoint(BaseModel):
 
 class HourlyDataPoint(BaseModel):
     time: datetime
-    pm25: float
-    aqi: float
+    pm25: Optional[float] = None
+    aqi: Optional[float] = None
+    temperature: Optional[float] = None
+    humidity: Optional[float] = None
+
+
 
 # ----------------------------------------
 # Global Data Store
@@ -306,8 +310,7 @@ def generate_historical_data(days: int = 7, points_per_day: int = 24, baseline_p
 #         ))
 #     return hourly
 
-def generate_24hour_data(time, field) -> List[HourlyDataPoint]:
-    sensor_id = "clw9wuxop000bfi7rod4j6ae5"
+def generate_24hour_data(time, field, sensor_id) -> List[HourlyDataPoint]:
     raw = transform_data_from_url(sensor_id, field, time)
     
     # Parse timestamps and values
@@ -390,7 +393,14 @@ def refresh_data():
         sensor.id: generate_historical_data(7, 24, sensor.pm25)
         for sensor in sensors
     }
-    hourly = generate_24hour_data(datetime.now().isoformat(), "pm2.5_ug_m3")
+
+    # ⚠️ Fix is here: Only generate hourly data for the first available sensor
+    if sensors:
+        default_sensor_id = sensors[0].id
+        hourly = generate_24hour_data(datetime.now().isoformat(), "pm2.5_ug_m3", default_sensor_id)
+    else:
+        hourly = []
+
     stats = calculate_statistics(sensors)
 
     DATA["sensors"] = sensors
@@ -398,6 +408,7 @@ def refresh_data():
     DATA["hourly"] = hourly
     DATA["statistics"] = stats
     print("Data refreshed", datetime.now().isoformat())
+
 
 
 # Initial data load
@@ -432,9 +443,39 @@ def get_historical(sensor_id: str):
     return DATA["historical"][sensor_id]
 
 
-@app.get("/api/hourly", response_model=List[HourlyDataPoint])
-def get_hourly():
-    return DATA["hourly"]
+from fastapi import Query
+
+from fastapi import Query  # already included
+
+@app.get("/api/hourly")
+def get_hourly(sensor_id: Optional[str] = Query(None)):
+    now = datetime.now().isoformat()
+
+    if not sensor_id:
+        if not DATA["sensors"]:
+            return []
+        sensor_id = DATA["sensors"][0].id
+
+    # Fetch PM2.5, temperature, and humidity in parallel
+    pm_data = generate_24hour_data(now, "pm2.5_ug_m3", sensor_id)
+    temp_data = generate_24hour_data(now, "temperature_C", sensor_id)
+    hum_data = generate_24hour_data(now, "humidity_percent", sensor_id)
+
+    # Merge based on time
+    merged = []
+    time_index = {entry["time"]: entry for entry in pm_data}
+    for entry in temp_data:
+        if entry["time"] in time_index:
+            time_index[entry["time"]]["temperature"] = entry["temperature"]
+    for entry in hum_data:
+        if entry["time"] in time_index:
+            time_index[entry["time"]]["humidity"] = entry["humidity"]
+
+    merged = list(time_index.values())
+    return merged
+
+
+
 
 @app.get("/api/statistics")
 def get_statistics():
