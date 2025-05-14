@@ -116,7 +116,7 @@ DATA = {
 
 def fetch_pm25_data() -> dict:
     url = (
-        "https://www.simpleaq.org/api/getdata?field=pm2.5&min_lat=-90&max_lat=90&min_lon=-180&max_lon=180&utc_epoch=1744612200000"
+        "https://www.simpleaq.org/api/getdata?field=pm2.5&min_lat=-90&max_lat=90&min_lon=-180&max_lon=180&utc_epoch=1747181760000"
     )
     try:
         response = httpx.get(url, timeout=10.0)
@@ -245,6 +245,7 @@ def generate_historical_data(days: int = 7, points_per_day: int = 24, baseline_p
     # print(data_points)
     data_points.sort(key=lambda x: x.timestamp)
     return data_points
+    
 
 
 # def generate_historical_data(days: int = 30) -> Dict[str, List[Dict]]:
@@ -383,18 +384,21 @@ def calculate_statistics(sensors: List[Sensor]) -> Dict:
     }
 
 def refresh_data():
-    # print("Refreshing data...", datetime.now().isoformat())
     raw_data = fetch_pm25_data()
     sensors = generate_sensors(raw_data)
-    historical = generate_historical_data(7, 24, 15)
+    historical = {
+        sensor.id: generate_historical_data(7, 24, sensor.pm25)
+        for sensor in sensors
+    }
     hourly = generate_24hour_data(datetime.now().isoformat(), "pm2.5_ug_m3")
     stats = calculate_statistics(sensors)
-    
+
     DATA["sensors"] = sensors
     DATA["historical"] = historical
     DATA["hourly"] = hourly
     DATA["statistics"] = stats
     print("Data refreshed", datetime.now().isoformat())
+
 
 # Initial data load
 refresh_data()
@@ -421,9 +425,12 @@ scheduler.start()
 def get_sensors():
     return DATA["sensors"]
 
-@app.get("/api/historical")
-def get_historical():
-    return DATA["historical"]
+@app.get("/api/historical", response_model=List[HistoricalDataPoint])
+def get_historical(sensor_id: str):
+    if sensor_id not in DATA["historical"]:
+        return []
+    return DATA["historical"][sensor_id]
+
 
 @app.get("/api/hourly", response_model=List[HourlyDataPoint])
 def get_hourly():
@@ -432,6 +439,7 @@ def get_hourly():
 @app.get("/api/statistics")
 def get_statistics():
     return DATA["statistics"]
+
 
 # ----------------------------------------
 # Run the Server (Uvicorn)
