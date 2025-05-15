@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Line, Bar, LineChart, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import axios from 'axios';
-import { historicalData } from '@/utils/dummyData';
+import { historicalData, generateHistoricalData } from '@/utils/dummyData';
 import { formatPM25 } from '@/utils/aqiUtils';
 
 interface AQIChartProps {
@@ -43,6 +43,8 @@ const AQIChart: React.FC<AQIChartProps> = ({
 
     if (timeRange === '24h') {
       fetchHourlyData();
+    } else {
+      setLoading(false);
     }
   }, [timeRange]);
 
@@ -51,23 +53,25 @@ const AQIChart: React.FC<AQIChartProps> = ({
     if (timeRange === '24h') {
       return hourlyData;
     } else {
-      // Use historical data for the specified sensor
-      const sensorData = historicalData[sensorId] || [];
+      // Generate historical data for the specified time range
+      const days = timeRange === '7d' ? 7 : 30;
+      const historicalDataPoints = generateHistoricalData(days, 24);
+      console.log('Generated Historical Data:', historicalDataPoints);
       
-      // For 7d or 30d, aggregate data to avoid too many points
-      const aggregateData = sensorData.filter((_, index) => {
-        if (timeRange === '7d') return index % 6 === 0; // Every 6 hours for 7 days
-        return index % 24 === 0; // Daily for 30 days
-      });
-      
-      return aggregateData.map(item => ({
+      // Format the data for the chart
+      const formattedData = historicalDataPoints.map(item => ({
         time: new Date(item.timestamp).toLocaleDateString(),
         pm25: item.pm25,
         temperature: item.temperature,
         humidity: item.humidity,
       }));
+      
+      console.log('Formatted Historical Data:', formattedData);
+      return formattedData;
     }
   })();
+
+  console.log('Final Chart Data:', chartData);
 
   // Determine the y-axis domain based on the data
   const maxPM25 = Math.ceil(Math.min(Math.max(...chartData.map((d: any) => d.pm25)) * 1.2, 500)); // Cap at 500 µg/m³ and round up
@@ -95,6 +99,10 @@ const AQIChart: React.FC<AQIChartProps> = ({
 
   if (error && timeRange === '24h') {
     return <div className="w-full h-[300px] flex items-center justify-center text-red-500">{error}</div>;
+  }
+
+  if (!chartData || chartData.length === 0) {
+    return <div className="w-full h-[300px] flex items-center justify-center">No data available</div>;
   }
   
   return (
