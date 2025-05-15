@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, BarChart, Map, Home, Info, Bell, Moon, Sun } from 'lucide-react';
+import { Menu, X, BarChart, Map, Home, Info, Bell, Moon, Sun} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Mail } from 'lucide-react';
+
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);

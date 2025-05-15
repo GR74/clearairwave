@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Map from "./pages/Map";
 import Contact from "./pages/Contact"
 import NotFound from "./pages/NotFound";
+import AboutPage from "./pages/AboutPage";
 import { useEffect } from "react";
 
 const queryClient = new QueryClient();
@@ -46,6 +47,7 @@ const App = () => {
             <Route path="/map" element={<Map />} />
             <Route path="*" element={<NotFound />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/about" element={<AboutPage />} />
 
           </Routes>
         </BrowserRouter>
