@@ -274,12 +274,12 @@ def generate_sensors(sensor_json: dict) -> List[Sensor]:
 #             temperature = 20 + 10 * math.sin((math.pi * hour) / 12) + random_in_range(-2, 2)
 #             humidity = 50 + 15 * math.cos((math.pi * hour) / 12) + random_in_range(-5, 5)
             
-            data_points.append(HistoricalDataPoint(
-                timestamp=timestamp,
-                pm25=pm25_value,
-                temperature=temperature,
-                humidity=humidity
-            ))
+            # data_points.append(HistoricalDataPoint(
+            #     timestamp=timestamp,
+            #     pm25=pm25_value,
+            #     temperature=temperature,
+            #     humidity=humidity
+            # ))
     # print(data_points)
     data_points.sort(key=lambda x: x.timestamp)
     return data_points
