@@ -1,7 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { Line, Bar, LineChart, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import {
+  LineChart,
+  BarChart,
+  Line,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  Text,
+} from 'recharts';
 import axios from 'axios';
-import { historicalData } from '@/utils/dummyData';
 import { formatPM25 } from '@/utils/aqiUtils';
 
 interface AQIChartProps {
@@ -9,70 +20,156 @@ interface AQIChartProps {
   data?: any[];
   timeRange?: '24h' | '7d' | '30d';
   sensorId?: string;
+  selectedMetric?: string;
   height?: number;
 }
 
-const AQIChart: React.FC<AQIChartProps> = ({ 
-  type = 'line', 
+const metricAliasMap: Record<string, string> = {
+  'pm2.5': 'pm25',
+};
+
+const AQIChart: React.FC<AQIChartProps> = ({
+  type = 'line',
   data,
-  timeRange = '24h', 
-  sensorId = 'sensor-2',
-  height = 300
+  timeRange = '24h',
+  sensorId,
+  height = 300,
+  selectedMetric,
 }) => {
-  const [hourlyData, setHourlyData] = useState<any[]>([]);
+  const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Fetch data only if `data` is not passed
   useEffect(() => {
-    const fetchHourlyData = async () => {
+    if (data || !sensorId) return;
+
+    const fetchData = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/api/hourly');
-        const formattedData = response.data.map((item: any) => ({
-          ...item,
-          time: new Date(item.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        }));
-        setHourlyData(formattedData);
+        setLoading(true);
+
+        let responseData;
+
+        if (timeRange === '24h') {
+          const response = await axios.get('http://localhost:3001/api/hourly', {
+            params: {
+              sensor_id: sensorId,
+              metric: selectedMetric,
+            },
+
+          });
+
+          const backendField = metricAliasMap[selectedMetric!] || selectedMetric!;
+
+          responseData = response.data.map(item => ({
+            time: new Date(item.time).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+            }),
+            [selectedMetric!]: item[backendField],
+          }));
+        } else {
+          // Fetch simulated data from /api/historical
+          const response = await axios.get('http://localhost:3001/api/historical', {
+            params: { sensor_id: sensorId },
+          });
+
+          const now = new Date();
+          let filtered = [...response.data];
+
+          if (timeRange === '7d') {
+            filtered = filtered
+              .filter(item => new Date(item.timestamp) > new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000))
+              .filter((_, i) => i % 6 === 0);
+          } else if (timeRange === '30d') {
+            filtered = filtered
+              .filter(item => new Date(item.timestamp) > new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000))
+              .filter((_, i) => i % 24 === 0);
+          }
+
+          responseData = filtered.map(item => ({
+            ...item,
+            time: new Date(item.timestamp).toLocaleDateString(),
+          }));
+        }
+
+        setChartData(responseData);
         setError(null);
       } catch (err) {
-        setError('Failed to fetch hourly data');
-        console.error('Error fetching hourly data:', err);
+        console.error(err);
+        setError('Failed to load chart data');
       } finally {
         setLoading(false);
       }
     };
 
-    if (timeRange === '24h') {
-      fetchHourlyData();
-    }
-  }, [timeRange]);
 
-  // If no custom data is provided, use the appropriate data based on timeRange
-  const chartData = data || (() => {
-    if (timeRange === '24h') {
-      return hourlyData;
-    } else {
-      // Use historical data for the specified sensor
-      const sensorData = historicalData[sensorId] || [];
-      
-      // For 7d or 30d, aggregate data to avoid too many points
-      const aggregateData = sensorData.filter((_, index) => {
-        if (timeRange === '7d') return index % 6 === 0; // Every 6 hours for 7 days
-        return index % 24 === 0; // Daily for 30 days
-      });
-      
-      return aggregateData.map(item => ({
-        time: new Date(item.timestamp).toLocaleDateString(),
-        pm25: item.pm25,
-        temperature: item.temperature,
-        humidity: item.humidity,
-      }));
-    }
-  })();
+    fetchData();
+  }, [sensorId, timeRange, data, selectedMetric]);
 
-  // Determine the y-axis domain based on the data
-  const maxPM25 = Math.ceil(Math.min(Math.max(...chartData.map((d: any) => d.pm25)) * 1.2, 500)); // Cap at 500 µg/m³ and round up
-  
-  // Custom tooltip formatter
+  const dataKey = metricAliasMap[selectedMetric!] || selectedMetric!;
+
+  const finalData = data || chartData;
+  const getMaxValue = () => {
+    const values = finalData.map(d => d[selectedMetric!] ?? 0);
+    const max = Math.max(...values);
+
+    const metricMaxStrategies: Record<string, () => number> = {
+      'pm25': () => Math.ceil(Math.min(max * 1.2, 500)),
+      'pm2.5': () => Math.ceil(Math.min(max * 1.2, 500)),
+      'pm10': () => Math.ceil(Math.min(max * 1.2, 500)),
+      'pm4': () => Math.ceil(Math.min(max * 1.2, 500)),
+      'pm1': () => Math.ceil(Math.min(max * 1.2, 500)),
+      'temperature': () => Math.ceil(max + 5),
+      'humidity': () => 100,
+      'pressure': () => Math.ceil(max + 10),
+      'NO2': () => Math.ceil(Math.min(max * 1.2, 5)),
+      'O3': () => Math.ceil(Math.min(max * 1.2, 5)),
+      'SO2': () => Math.ceil(Math.min(max * 1.2, 5)),
+    };
+
+    const fallback = () => Math.ceil(max * 1.1);
+    return (metricMaxStrategies[selectedMetric!] || fallback)();
+  };
+
+
+  const metricColors: Record<string, string> = {
+    'pm2.5': '#3b82f6',
+    'pm10': '#60a5fa',
+    'pm4': '#818cf8',
+    'pm1': '#7dd3fc',
+    'temperature': '#f97316',
+    'humidity': '#0ea5e9',
+    'pressure': '#a855f7',
+    'NO2': '#ef4444',
+    'O3': '#22c55e',
+    'SO2': '#eab308',
+    'pm25': '#3b82f6', // fallback for pm25 alias
+  };
+  const chartColor = metricColors[selectedMetric || 'pm2.5'] || '#64748b';
+
+  const metricUnits: Record<string, string> = {
+    'pm2.5': 'µg/m³',
+    'pm10': 'µg/m³',
+    'pm4': 'µg/m³',
+    'pm1': 'µg/m³',
+    'temperature': '°C',
+    'humidity': '%',
+    'pressure': 'hPa',
+    'NO2': 'ppm',
+    'O3': 'ppm',
+    'SO2': 'ppm',
+    'pm25': 'µg/m³',
+  };
+  const yLabel = metricUnits[selectedMetric || 'pm2.5'] || '';
+
+
+  const maxValue = getMaxValue();
+
+
+  const hasTemperature = finalData.some(d => d.temperature !== undefined);
+  const hasHumidity = finalData.some(d => d.humidity !== undefined);
+
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -80,7 +177,7 @@ const AQIChart: React.FC<AQIChartProps> = ({
           <p className="font-medium">{label}</p>
           {payload.map((entry: any, index: number) => (
             <p key={`item-${index}`} style={{ color: entry.color }}>
-              {entry.name}: {entry.name === 'PM2.5' ? `${formatPM25(entry.value)} µg/m³` : entry.value}
+              {entry.name}: {entry.value} {metricUnits[selectedMetric || 'pm2.5']}
             </p>
           ))}
         </div>
@@ -88,99 +185,101 @@ const AQIChart: React.FC<AQIChartProps> = ({
     }
     return null;
   };
+  if ((loading && !data) || finalData.length === 0) {
+    return (
+      <div className="w-full h-[300px] flex flex-col items-center justify-center animate-fade-in">
+        <div className="relative w-16 h-16 mb-4">
+          {/* Outer Ring - Orbit Spin */}
+          <div className="absolute inset-0 rounded-full border-[6px] border-t-transparent border-l-transparent border-aqi.good animate-spin-slow blur-sm opacity-100 shadow-[0_0_20px_#4ade80]" />
 
-  if (loading && timeRange === '24h') {
-    return <div className="w-full h-[300px] flex items-center justify-center">Loading...</div>;
+          {/* Middle Ring - Reverse Spin */}
+          <div className="absolute inset-1 rounded-full border-[4px] border-r-transparent border-b-transparent border-aqi.moderate animate-spin-reverse blur-sm opacity-100" />
+
+          {/* Core Pulse Dot */}
+          <div className="absolute top-1/2 left-1/2 w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-aqi.hazardous animate-ping-slow shadow-md" />
+        </div>
+
+        <p className="text-sm text-center text-muted-foreground animate-pulse-slow tracking-wide">
+          {loading ? 'Fetching real-time air quality data...' : 'No data available'}
+        </p>
+      </div>
+    );
   }
 
-  if (error && timeRange === '24h') {
-    return <div className="w-full h-[300px] flex items-center justify-center text-red-500">{error}</div>;
+
+  if (error) {
+    return (
+      <div className="w-full h-[300px] flex items-center justify-center text-red-500">
+        {error}
+      </div>
+    );
   }
-  
+
+  console.log("Selected metric:", selectedMetric);
+  console.log("Resolved dataKey:", dataKey);
+  console.log("Final data:", finalData);
+
   return (
     <div className="w-full overflow-hidden">
       <ResponsiveContainer width="100%" height={height}>
-        {type === 'line' ? (
-          <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis 
-              dataKey="time" 
-              tick={{ fontSize: 12 }} 
-              tickLine={false}
-              axisLine={{ stroke: '#e0e0e0' }}
-            />
-            <YAxis 
-              tick={{ fontSize: 12 }}
-              domain={[0, maxPM25]}
-              tickLine={false}
-              axisLine={{ stroke: '#e0e0e0' }}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend />
-            <Line 
-              type="monotone" 
-              dataKey="pm25" 
-              name="PM2.5"
-              stroke="#3b82f6" 
-              strokeWidth={2}
-              dot={{ r: 2 }}
-              activeDot={{ r: 5 }}
-              animationDuration={1500}
-            />
-            {chartData[0]?.temperature && (
-              <Line 
-                type="monotone" 
-                dataKey="temperature" 
-                name="Temperature"
-                stroke="#f97316" 
-                strokeWidth={2} 
-                dot={{ r: 2 }}
-                activeDot={{ r: 5 }}
-                animationDuration={1500}
-              />
-            )}
-            {chartData[0]?.humidity && (
-              <Line 
-                type="monotone" 
-                dataKey="humidity" 
-                name="Humidity"
-                stroke="#0ea5e9" 
-                strokeWidth={2} 
-                dot={{ r: 2 }}
-                activeDot={{ r: 5 }}
-                animationDuration={1500}
-              />
-            )}
-          </LineChart>
-        ) : (
-          <BarChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis 
-              dataKey="time" 
-              tick={{ fontSize: 12 }} 
-              tickLine={false}
-              axisLine={{ stroke: '#e0e0e0' }}
-            />
-            <YAxis 
-              tick={{ fontSize: 12 }}
-              domain={[0, maxPM25]}
-              tickLine={false}
-              axisLine={{ stroke: '#e0e0e0' }}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend />
-            <Bar 
-              dataKey="pm25" 
-              name="PM2.5"
-              fill="#3b82f6" 
-              radius={[4, 4, 0, 0]}
-              animationDuration={1500}
-            />
-          </BarChart>
-        )}
+        <LineChart data={finalData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+
+          <XAxis
+            dataKey="time"
+            tick={(props) => {
+              const { x, y, payload } = props;
+              return (
+                <Text
+                  x={x}
+                  y={y}
+                  angle={-45}
+                  textAnchor="end"
+                  verticalAnchor="middle"
+                  fontSize={10}
+                  fill="#666"
+                >
+                  {payload.value}
+                </Text>
+              );
+            }}
+            height={60}
+          />
+
+          <YAxis
+            label={{
+              value: yLabel,
+              angle: -90,
+              position: 'insideLeft',
+            }}
+
+            domain={[0, maxValue]}
+            tick={{ fontSize: 12 }}
+          />
+
+          <Tooltip content={<CustomTooltip />} />
+          <Legend />
+          <Line
+            type="monotone"
+            dataKey={selectedMetric}
+            name={selectedMetric?.toUpperCase()}
+
+            stroke={chartColor}
+            fill={chartColor}
+
+            strokeWidth={2}
+            dot={{ r: 2 }}
+            activeDot={{ r: 5 }}
+            animationDuration={1500}
+          />
+
+        </LineChart>
+
       </ResponsiveContainer>
     </div>
+
   );
+
 };
 
 export default AQIChart;

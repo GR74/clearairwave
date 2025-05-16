@@ -16,33 +16,48 @@ import { useLocation } from 'react-router-dom';
 
 const DashboardPage = () => {
 
-//Fetches sensor names for the dropdown for the AQIChart
-const [sensorNames, setSensorNames] = useState<string[]>([]);
-const [selectedSensor, setSelectedSensor] = useState('');
-
-useEffect(() => {
-  const fetchSensorNames = async () => {
-    try {
-      const response = await axios.get('http://localhost:3001/api/sensors');
-      const sensors = response.data;
-
-      // Extract the 'name' field from each object
-      const names = sensors.map((sensor: any) => sensor.name);
-
-      // Set into state
-      setSensorNames(names);
-
-      // Optionally pre-select the first one
-      if (names.length > 0) setSelectedSensor(names[0]);
-    } catch (error) {
-      console.error('Failed to fetch sensor names:', error);
-    }
+  type SensorInfo = {
+    id: string;
+    name: string;
   };
 
-  fetchSensorNames();
-}, []);
+  //Fetches sensor names for the dropdown for the AQIChart
+  const [sensors, setSensors] = useState<SensorInfo[]>([]);
+  const [selectedSensorId, setSelectedSensorId] = useState<string>('');
+  const metricOptions = [
+    "pm2.5", "pm10", "pm4", "pm1",
+    "temperature", "humidity", "pressure",
+    "NO2", "O3", "SO2"
+  ] as const;
 
-//Allows routing to specific parts of this page using id hashing
+  type MetricOption = typeof metricOptions[number];
+
+  const [selectedMetric, setSelectedMetric] = useState<MetricOption>("pm2.5");
+
+
+
+  useEffect(() => {
+    const fetchSensorNames = async () => {
+      try {
+        const response = await axios.get('http://localhost:3001/api/sensors');
+        const sensors: SensorInfo[] = response.data.map((sensor: any) => ({
+          id: sensor.id,
+          name: sensor.name,
+        }));
+        setSensors(sensors);
+        if (sensors.length > 0) {
+          setSelectedSensorId(sensors[0].id); // Set initial selection by ID
+        }
+      } catch (error) {
+        console.error('Failed to fetch sensor names:', error);
+      }
+    };
+
+    fetchSensorNames();
+  }, []);
+
+
+  //Allows routing to specific parts of this page using id hashing
   const location = useLocation();
   useEffect(() => {
     const hash = location.hash;
@@ -204,32 +219,55 @@ useEffect(() => {
                   </TabsList>
                 </Tabs>
               </div>
-              <div className="flex flex-col">
-                <label className="text-xs text-muted-foreground mb-2">Sensor:</label>
-              <select
-              value={selectedSensor}
-              onChange={(e) => setSelectedSensor(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              >
-                {sensorNames.map((name, idx) => (
-                  <option key={idx} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex flex-col space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Sensor</label>
+                  <select
+                    value={selectedSensorId}
+                    onChange={(e) => setSelectedSensorId(e.target.value)}
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all"
+                  >
+                    {sensors.map((sensor) => (
+                      <option key={sensor.id} value={sensor.id}>
+                        {sensor.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Metric</label>
+                  <select
+                    value={selectedMetric}
+                    onChange={(e) => setSelectedMetric(e.target.value as typeof metricOptions[number])}
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all"
+                  >
+                    {metricOptions.map((metric) => (
+                      <option key={metric} value={metric}>
+                        {metric.toUpperCase()}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
+
             </div>
-            <AQIChart type="line" timeRange={timeRange} sensorId={selectedSensor} height={280} />
+
+            <div className="mt-6">
+              <AQIChart
+                type="line"
+                timeRange={timeRange}
+                sensorId={selectedSensorId}
+                selectedMetric={selectedMetric}
+                height={280}
+              />
+            </div>
+
+
           </div>
 
           <div className="space-y-5">
-            <div className="glass-card rounded-lg p-5">
-              <div className="mb-4">
-                <div className="text-lg font-medium mb-1">Daily Distribution</div>
-                <div className="text-sm text-muted-foreground">PM2.5 levels by hour</div>
-              </div>
-              <AQIChart type="bar" data={timeDistribution} height={220} />
-            </div>
+            
 
             <div className="glass-card rounded-lg p-5">
               <div className="mb-4">
