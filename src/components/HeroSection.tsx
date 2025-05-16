@@ -145,7 +145,7 @@ const HeroSection = () => {
               title="Clean Air Zones"
               value={`${percentage}%`}
               icon={<CloudRain className="h-5 w-5 text-primary" />}
-              description={`${goodCount} of ${realSensors.length} sensors reporting good air`}
+              description={`${goodCount} of ${realSensors.length} sensors reporting good air conditions`}
               cardClassName="animate-slide-up [animation-delay:300ms]"
             />
 

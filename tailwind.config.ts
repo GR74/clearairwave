@@ -114,6 +114,15 @@ export default {
 					'0%, 100%': { transform: 'scale(1)' },
 					'50%': { transform: 'scale(1.03)' },
 				},
+				'spin-reverse': {
+  from: { transform: 'rotate(360deg)' },
+  to: { transform: 'rotate(0deg)' },
+},
+'ping-slow': {
+  '0%': { transform: 'scale(1)', opacity: '1' },
+  '75%, 100%': { transform: 'scale(1.5)', opacity: '0' },
+},
+
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
@@ -124,6 +133,10 @@ export default {
 				'slide-down': 'slide-down 0.5s ease-out',
 				'pulse-slow': 'pulse-slow 4s ease-in-out infinite',
 				'breathe': 'breathe 6s ease-in-out infinite',
+				'spin-slow': 'spin 3s linear infinite',
+				'spin-reverse': 'spin-reverse 4s linear infinite',
+				'ping-slow': 'ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite',
+
 			},
 			backdropFilter: {
 				'none': 'none',

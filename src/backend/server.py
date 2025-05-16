@@ -5,6 +5,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime, timedelta
 import random
 import math
+import time
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 from datetime import datetime, timezone
@@ -22,6 +23,19 @@ AQI_BREAKPOINTS = [
     {"min": 150.5, "max": 250.4, "category": "Very Unhealthy", "color": "#c084fc"},
     {"min": 250.5, "max": 500, "category": "Hazardous", "color": "#ef4444"}
 ]
+
+DATA_VAL_DICT = {
+    "pm2.5": "pm2.5_ug_m3",
+    "pm10": "pm10.0_ug_m3",
+    "pm4": "pm4.0_ug_m3",
+    "pm1": "pm1.0_ug_m3",
+    "temperature": "temperature_C",
+    "humidity": "humidity_percent",
+    "pressure": "pressure_hPa",
+    "NO2": "NO2_concentration_ppm",
+    "O3": "O3_concentration_ppm",
+    "SO2": "SO2_concentration_ppm",
+}
 
 def calculate_aqi(pm25: float) -> int:
     if pm25 < 0:
@@ -64,6 +78,22 @@ def get_health_recommendations(category: str) -> str:
 def format_pm25(pm25: float) -> str:
     return f"{pm25:.1f}"
 
+
+def fetch_latest_utc_epoch(sensor_id: str) -> int:
+    url = f"https://www.simpleaq.org/api/getmostrecentdevicepoint?id={sensor_id}"
+    try:
+        response = httpx.get(url, timeout=5.0)
+        response.raise_for_status()
+        data = response.json()
+        if data.get("found"):
+            dt = datetime.fromisoformat(data["timestamp"].replace("Z", "+00:00"))
+            return int(dt.timestamp() * 1000)
+    except Exception as e:
+        print("Error fetching latest UTC epoch:", e)
+    return int(datetime.now(timezone.utc).timestamp() * 1000)
+
+
+
 # ----------------------------------------
 # Pydantic Models for API Data
 # ----------------------------------------
@@ -96,8 +126,12 @@ class HistoricalDataPoint(BaseModel):
 
 class HourlyDataPoint(BaseModel):
     time: datetime
-    pm25: float
-    aqi: float
+    pm25: Optional[float] = None
+    aqi: Optional[float] = None
+    temperature: Optional[float] = None
+    humidity: Optional[float] = None
+
+
 
 # ----------------------------------------
 # Global Data Store
@@ -116,17 +150,21 @@ DATA = {
 
 def fetch_pm25_data() -> dict:
     url = (
-        "https://www.simpleaq.org/api/getdata?field=pm2.5&min_lat=-90&max_lat=90&min_lon=-180&max_lon=180&utc_epoch=1744612200000"
+        "https://www.simpleaq.org/api/getdata?field=pm2.5"
+        "&min_lat=39.939889&max_lat=40.277507&min_lon=-82.782446&max_lon=-82.195962"
+        f"&utc_epoch={int(time.time()) * 1000}"  # static timestamp that worked
+        
     )
     try:
         response = httpx.get(url, timeout=10.0)
         response.raise_for_status()
         print("Fetched PM2.5 data")
-        # print("Response:", response.json())
+        # print(url)
         return response.json()
     except Exception as e:
         print("Error fetching PM2.5 data:", str(e))
         return {}
+
 
 def random_in_range(min_val: float, max_val: float) -> float:
     return random.uniform(min_val, max_val)
@@ -236,21 +274,22 @@ def generate_sensors(sensor_json: dict) -> List[Sensor]:
 #             temperature = 20 + 10 * math.sin((math.pi * hour) / 12) + random_in_range(-2, 2)
 #             humidity = 50 + 15 * math.cos((math.pi * hour) / 12) + random_in_range(-5, 5)
             
-#             data_points.append(HistoricalDataPoint(
-#                 timestamp=timestamp,
-#                 pm25=pm25_value,
-#                 temperature=temperature,
-#                 humidity=humidity
-#             ))
-#     # print(data_points)
-#     data_points.sort(key=lambda x: x.timestamp)
-#     return data_points
+            data_points.append(HistoricalDataPoint(
+                timestamp=timestamp,
+                pm25=pm25_value,
+                temperature=temperature,
+                humidity=humidity
+            ))
+    # print(data_points)
+    data_points.sort(key=lambda x: x.timestamp)
+    return data_points
+    
 
 
-def generate_historical_data(days: int = 30) -> Dict[str, List[Dict]]:
-    sensor_id = "clw9wuxop000bfi7rod4j6ae5"
-    # Start at midnight (UTC) `days-1` ago:
-    start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days-1)
+# def generate_historical_data(days: int = 30) -> Dict[str, List[Dict]]:
+#     sensor_id = "clw9wuxop000bfi7rod4j6ae5"
+#     # Start at midnight (UTC) `days-1` ago:
+#     start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days-1)
 
     historical: Dict[str, List[Dict]] = {sensor_id: []}
     for day_offset in range(days):
@@ -305,8 +344,7 @@ def generate_historical_data(days: int = 30) -> Dict[str, List[Dict]]:
 #         ))
 #     return hourly
 
-def generate_24hour_data(time, field) -> List[HourlyDataPoint]:
-    sensor_id = "clw9wuxop000bfi7rod4j6ae5"
+def generate_24hour_data(time, field, sensor_id) -> List[HourlyDataPoint]:
     raw = transform_data_from_url(sensor_id, field, time)
     
     # Parse timestamps and values
@@ -325,25 +363,23 @@ def generate_24hour_data(time, field) -> List[HourlyDataPoint]:
     
     # Calculate hourly averages
     result = []
+    metric_key = next((k for k, v in DATA_VAL_DICT.items() if v == field), None)
     for hour in sorted(hourly_data.keys()):
         values = hourly_data[hour]
-        pm25_avg = sum(values) / len(values)
-        aqi = calculate_aqi(pm25_avg)
+        metric_avg = sum(values) / len(values)
+        aqi = calculate_aqi(metric_avg)
         
         data_point = {
             "time": hour.strftime("%Y-%m-%dT%H:00:00")
         }
         
-        if field == "pm2.5_ug_m3":
-            data_point.update({
-                "pm25": round(pm25_avg, 4),
-                "aqi": aqi
-            })
-        elif field == "temperature_C":
-            data_point["temperature"] = round(pm25_avg, 2)
-        elif field == "humidity_percent":
-            data_point["humidity"] = round(pm25_avg, 2)
-            
+        if metric_key:
+            if field == "pm2.5_ug_m3":
+                data_point["pm25"] = round(metric_avg, 4)
+                data_point["aqi"] = aqi
+            else:
+                data_point[metric_key] = round(metric_avg, 4)
+
         result.append(data_point)
     
     return result
@@ -351,8 +387,10 @@ def generate_24hour_data(time, field) -> List[HourlyDataPoint]:
 
 def transform_data_from_url(sensor_id, field, time) -> dict:
     # URL encode the time parameter
-    encoded_time = time.replace(":", "%3A").replace(".", "%2E")
+    encoded_time = time
+    print("Encoded time:", encoded_time)
     url = f"https://www.simpleaq.org/api/getgraphdata?id={sensor_id}&field={field}&rangehours=24&time={encoded_time}"
+    print(url)
     response = httpx.get(url)
     response.raise_for_status()  # ensures it throws an error if response code is not 200
 
@@ -383,18 +421,29 @@ def calculate_statistics(sensors: List[Sensor]) -> Dict:
     }
 
 def refresh_data():
-    # print("Refreshing data...", datetime.now().isoformat())
     raw_data = fetch_pm25_data()
     sensors = generate_sensors(raw_data)
-    historical = generate_historical_data(30)
-    hourly = generate_24hour_data(datetime.now().isoformat(), "pm2.5_ug_m3")
+    historical = {
+        sensor.id: generate_historical_data(7, 24, sensor.pm25)
+        for sensor in sensors
+    }
+
+    # ⚠️ Fix is here: Only generate hourly data for the first available sensor
+    if sensors:
+        default_sensor_id = sensors[0].id
+        hourly = generate_24hour_data(datetime.now().isoformat(), "pm2.5_ug_m3", default_sensor_id)
+    else:
+        hourly = []
+
     stats = calculate_statistics(sensors)
-    
+
     DATA["sensors"] = sensors
     DATA["historical"] = historical
     DATA["hourly"] = hourly
     DATA["statistics"] = stats
     print("Data refreshed", datetime.now().isoformat())
+
+
 
 # Initial data load
 refresh_data()
@@ -421,17 +470,43 @@ scheduler.start()
 def get_sensors():
     return DATA["sensors"]
 
-@app.get("/api/historical")
-def get_historical():
-    return DATA["historical"]
+@app.get("/api/historical", response_model=List[HistoricalDataPoint])
+def get_historical(sensor_id: str):
+    if sensor_id not in DATA["historical"]:
+        return []
+    return DATA["historical"][sensor_id]
 
-@app.get("/api/hourly", response_model=List[HourlyDataPoint])
-def get_hourly():
-    return DATA["hourly"]
+
+from fastapi import Query
+
+
+@app.get("/api/hourly")
+def get_hourly(sensor_id: Optional[str] = Query(None), metric: Optional[str] = Query(None)):
+    now = datetime.now().isoformat()
+
+    if not sensor_id:
+        if not DATA["sensors"]:
+            return []
+        sensor_id = DATA["sensors"][0].id
+    if not metric:
+        metric = "temperature"
+
+
+    backend_field = DATA_VAL_DICT.get(metric)
+    if backend_field is None:
+        print(f"[WARNING] Unknown metric: {metric}")
+        return []
+
+    print(f"[INFO] Fetching {metric} ({backend_field}) for sensor {sensor_id}")
+    return generate_24hour_data(now, backend_field, sensor_id)
+
+
+
 
 @app.get("/api/statistics")
 def get_statistics():
     return DATA["statistics"]
+
 
 # ----------------------------------------
 # Run the Server (Uvicorn)
