@@ -21,10 +21,19 @@ const DashboardPage = () => {
     name: string;
   };
 
-//Fetches sensor names for the dropdown for the AQIChart
-const [sensors, setSensors] = useState<SensorInfo[]>([]);
-const [selectedSensorId, setSelectedSensorId] = useState<string>('');
-const [selectedMetric, setSelectedMetric] = useState<'pm25' | 'temperature' | 'humidity'>('pm25');
+  //Fetches sensor names for the dropdown for the AQIChart
+  const [sensors, setSensors] = useState<SensorInfo[]>([]);
+  const [selectedSensorId, setSelectedSensorId] = useState<string>('');
+  const metricOptions = [
+    "pm2.5", "pm10", "pm4", "pm1",
+    "temperature", "humidity", "pressure",
+    "NO2", "O3", "SO2"
+  ] as const;
+
+  type MetricOption = typeof metricOptions[number];
+
+  const [selectedMetric, setSelectedMetric] = useState<MetricOption>("pm2.5");
+
 
 
   useEffect(() => {
@@ -43,12 +52,12 @@ const [selectedMetric, setSelectedMetric] = useState<'pm25' | 'temperature' | 'h
         console.error('Failed to fetch sensor names:', error);
       }
     };
-  
+
     fetchSensorNames();
   }, []);
 
 
-//Allows routing to specific parts of this page using id hashing
+  //Allows routing to specific parts of this page using id hashing
   const location = useLocation();
   useEffect(() => {
     const hash = location.hash;
@@ -211,58 +220,54 @@ const [selectedMetric, setSelectedMetric] = useState<'pm25' | 'temperature' | 'h
                 </Tabs>
               </div>
               <div className="flex flex-col sm:flex-row gap-4">
-  <div className="flex flex-col space-y-1">
-    <label className="text-xs font-medium text-muted-foreground">Sensor</label>
-    <select
-      value={selectedSensorId}
-      onChange={(e) => setSelectedSensorId(e.target.value)}
-      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all"
-    >
-      {sensors.map((sensor) => (
-        <option key={sensor.id} value={sensor.id}>
-          {sensor.name}
-        </option>
-      ))}
-    </select>
-  </div>
+                <div className="flex flex-col space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Sensor</label>
+                  <select
+                    value={selectedSensorId}
+                    onChange={(e) => setSelectedSensorId(e.target.value)}
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all"
+                  >
+                    {sensors.map((sensor) => (
+                      <option key={sensor.id} value={sensor.id}>
+                        {sensor.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-  <div className="flex flex-col space-y-1">
-    <label className="text-xs font-medium text-muted-foreground">Metric</label>
-    <select
-      value={selectedMetric}
-      onChange={(e) => setSelectedMetric(e.target.value as 'pm25' | 'temperature' | 'humidity')}
-      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all"
-    >
-      <option value="pm25">PM2.5</option>
-      <option value="temperature">Temperature</option>
-      <option value="humidity">Humidity</option>
-    </select>
-  </div>
-</div>
+                <div className="flex flex-col space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Metric</label>
+                  <select
+                    value={selectedMetric}
+                    onChange={(e) => setSelectedMetric(e.target.value as typeof metricOptions[number])}
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-all"
+                  >
+                    {metricOptions.map((metric) => (
+                      <option key={metric} value={metric}>
+                        {metric.toUpperCase()}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
-</div>
+            </div>
 
-<div className="mt-6">
-  <AQIChart
-    type="line"
-    timeRange={timeRange}
-    sensorId={selectedSensorId}
-    selectedMetric={selectedMetric}
-    height={280}
-  />
-</div>
+            <div className="mt-6">
+              <AQIChart
+                type="line"
+                timeRange={timeRange}
+                sensorId={selectedSensorId}
+                selectedMetric={selectedMetric}
+                height={280}
+              />
+            </div>
 
 
           </div>
 
           <div className="space-y-5">
-            <div className="glass-card rounded-lg p-5">
-              <div className="mb-4">
-                <div className="text-lg font-medium mb-1">Daily Distribution</div>
-                <div className="text-sm text-muted-foreground">PM2.5 levels by hour</div>
-              </div>
-              <AQIChart type="bar" data={timeDistribution} height={220} />
-            </div>
+            
 
             <div className="glass-card rounded-lg p-5">
               <div className="mb-4">
