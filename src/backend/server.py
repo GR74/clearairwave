@@ -249,38 +249,38 @@ def generate_sensors(sensor_json: dict) -> List[Sensor]:
     # print(sensors)
     return sensors
 
-# def generate_historical_data(days: int = 7, points_per_day: int = 24, baseline_pm25: float = 15) -> List[HistoricalDataPoint]:
-#     now = datetime.now()
-#     data_points = []
-#     for day in range(days):
-#         for point in range(points_per_day):
-#             timestamp = now - timedelta(days=day)
-#             hour = int((24 * point) / points_per_day)
-#             timestamp = timestamp.replace(hour=hour, minute=0, second=0, microsecond=0)
+def generate_historical_data(days: int = 7, points_per_day: int = 24, baseline_pm25: float = 15) -> List[HistoricalDataPoint]:
+    now = datetime.now()
+    data_points = []
+    for day in range(days):
+        for point in range(points_per_day):
+            timestamp = now - timedelta(days=day)
+            hour = int((24 * point) / points_per_day)
+            timestamp = timestamp.replace(hour=hour, minute=0, second=0, microsecond=0)
             
-#             pm25_factor = 1.0
-#             if (7 <= hour <= 9) or (16 <= hour <= 19):
-#                 pm25_factor = 1.5 + random.random() * 0.5
-#             elif hour >= 22 or hour <= 5:
-#                 pm25_factor = 0.7 + random.random() * 0.3
+            pm25_factor = 1.0
+            if (7 <= hour <= 9) or (16 <= hour <= 19):
+                pm25_factor = 1.5 + random.random() * 0.5
+            elif hour >= 22 or hour <= 5:
+                pm25_factor = 0.7 + random.random() * 0.3
             
-#             day_of_week = (now.weekday() - day) % 7
-#             if day_of_week in (5, 6):
-#                 pm25_factor *= 0.85
+            day_of_week = (now.weekday() - day) % 7
+            if day_of_week in (5, 6):
+                pm25_factor *= 0.85
             
-#             random_factor = 0.8 + random.random() * 0.4
-#             pm25_value = baseline_pm25 * pm25_factor * random_factor
+            random_factor = 0.8 + random.random() * 0.4
+            pm25_value = baseline_pm25 * pm25_factor * random_factor
             
-#             temperature = 20 + 10 * math.sin((math.pi * hour) / 12) + random_in_range(-2, 2)
-#             humidity = 50 + 15 * math.cos((math.pi * hour) / 12) + random_in_range(-5, 5)
+            temperature = 20 + 10 * math.sin((math.pi * hour) / 12) + random_in_range(-2, 2)
+            humidity = 50 + 15 * math.cos((math.pi * hour) / 12) + random_in_range(-5, 5)
             
-            # data_points.append(HistoricalDataPoint(
-            #     timestamp=timestamp,
-            #     pm25=pm25_value,
-            #     temperature=temperature,
-            #     humidity=humidity
-            # ))
-    # print(data_points)
+            data_points.append(HistoricalDataPoint(
+                timestamp=timestamp,
+                pm25=pm25_value,
+                temperature=temperature,
+                humidity=humidity
+            ))
+    print(data_points)
     data_points.sort(key=lambda x: x.timestamp)
     return data_points
     
@@ -291,33 +291,33 @@ def generate_sensors(sensor_json: dict) -> List[Sensor]:
 #     # Start at midnight (UTC) `days-1` ago:
 #     start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days-1)
 
-    historical: Dict[str, List[Dict]] = {sensor_id: []}
-    for day_offset in range(days):
-        day = start + timedelta(days=day_offset)
-        # Format the datetime in ISO format with 'Z' suffix
-        formatted_time = day.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    # historical: Dict[str, List[Dict]] = {sensor_id: []}
+    # for day_offset in range(days):
+    #     day = start + timedelta(days=day_offset)
+    #     # Format the datetime in ISO format with 'Z' suffix
+    #     formatted_time = day.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
-        # 1. PM2.5 daily average via your existing generator
-        pm_records = generate_24hour_data(formatted_time, "pm2.5_ug_m3")
-        # print(pm_records)
-        pm25_avg = sum(r["pm25"] for r in pm_records) / len(pm_records)
+    #     # 1. PM2.5 daily average via your existing generator
+    #     pm_records = generate_24hour_data(formatted_time, "pm2.5_ug_m3")
+    #     # print(pm_records)
+    #     pm25_avg = sum(r["pm25"] for r in pm_records) / len(pm_records)
 
-        # # 2. Temperature daily average
-        # temp_records = generate_24hour_data(formatted_time, "temperature_C")
-        # temp_avg = sum(r["temperature"] for r in temp_records) / len(temp_records)
+    #     # # 2. Temperature daily average
+    #     # temp_records = generate_24hour_data(formatted_time, "temperature_C")
+    #     # temp_avg = sum(r["temperature"] for r in temp_records) / len(temp_records)
 
-        # # 3. Humidity daily average
-        # hum_records = generate_24hour_data(formatted_time, "humidity_percent")
-        # hum_avg = sum(r["humidity"] for r in hum_records) / len(hum_records)
+    #     # # 3. Humidity daily average
+    #     # hum_records = generate_24hour_data(formatted_time, "humidity_percent")
+    #     # hum_avg = sum(r["humidity"] for r in hum_records) / len(hum_records)
 
-        historical[sensor_id].append({
-            "timestamp": day.strftime("%Y-%m-%dT00:00:00"),
-            "pm25": pm25_avg,
-            "temperature": 0,
-            "humidity": 0
-        })
+    #     historical[sensor_id].append({
+    #         "timestamp": day.strftime("%Y-%m-%dT00:00:00"),
+    #         "pm25": pm25_avg,
+    #         "temperature": 0,
+    #         "humidity": 0
+    #     })
 
-    return historical
+    # return historical
 
 
 
