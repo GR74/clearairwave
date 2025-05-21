@@ -100,13 +100,6 @@ const Header = () => {
 
         {/* Action Buttons */}
         <div className="hidden md:flex items-center space-x-2">
-          {/* <Button variant="ghost" size="icon" onClick={toggleDarkMode} className="rounded-full">
-            {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          </Button> */}
-          <Button variant="ghost" size="icon" className="rounded-full">
-            <Bell className="h-5 w-5" />
-          </Button>
-          {/* <Button className="rounded-full">Sign In</Button> */}
         </div>
 
         {/* Mobile Navigation Button */}

@@ -6,23 +6,27 @@ interface Developer {
   name: string;
   role: string;
   img: string;
+  linkedin: string;
 }
 
 const developers: Developer[] = [
   {
     name: "Aniket Chaudhari",
-    role: "Frontend & UI Developer",
-    img: "src/images/Image.png",
+    role: "Backend & Server Integration",
+    img: "src/images/IMG_3962.jpeg",
+    linkedin: "https://www.linkedin.com/in/aniket-chaudhari-12238833a/",
   },
   {
     name: "Gowrish Rajagopal",
-    role: "Backend & Sensor Integration",
-    img: "/images/gowrish.jpg",
+    role: "Project Lead & Full Stack Developer",
+    img: "src/images/IMG_5048.jpeg",
+    linkedin: "https://www.linkedin.com/in/gowrishrajagopal/",
   },
   {
     name: "Yasharth Pandey",
-    role: "Project Lead & Full Stack Developer",
-    img: "src/images/Screenshot 2025-05-15 173829 (1).png",
+    role: "Frontend & Pipeline Integration",
+    img: "src/images/IMG_9273.jpeg",
+    linkedin: "https://www.linkedin.com/in/yasharth-pandey/",
   },
 ];
 
@@ -102,7 +106,7 @@ const AboutPage: React.FC = () => {
       </section>
 
       {/* Section 3: Developer Team */}
-      <section className="min-h-screen px-6 py-16 bg-gradient-to-b from-blue-50 to-white text-center">
+<section className="px-6 pt-16 pb-8 bg-gradient-to-b from-blue-50 to-white text-center">
         <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-12">
           Meet the Developers
         </h2>
@@ -112,13 +116,22 @@ const AboutPage: React.FC = () => {
               key={index}
               className="bg-white rounded-xl shadow-lg p-6 max-w-xs hover:scale-105 transform transition duration-300"
             >
-              <img
-                src={dev.img}
-                alt={dev.name}
-                className="w-32 h-32 rounded-full mx-auto mb-4 object-cover"
-              />
-              <h3 className="text-xl font-semibold">{dev.name}</h3>
-              <p className="text-sm text-gray-600">{dev.role}</p>
+              <a
+              href={dev.linkedin}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block max-w-xs transform transition duration-300 hover:scale-105"
+              >
+              <div className="bg-white rounded-xl p-6">
+                <img
+                  src={dev.img}
+                  alt={dev.name}
+                  className="w-32 h-32 rounded-full mx-auto mb-4 object-cover"
+                />
+                <h3 className="text-xl font-semibold text-center">{dev.name}</h3>
+                <p className="text-sm text-gray-600 text-center">{dev.role}</p>
+              </div>
+              </a>
             </div>
           ))}
         </div>

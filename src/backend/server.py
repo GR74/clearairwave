@@ -152,7 +152,7 @@ def generate_sensors(sensor_json: dict) -> List[Sensor]:
                 field[f].raise_for_status()
                 # print("each sensor data: ", field[f].json())
                 graph_data = field[f].json().get("value", [])
-                print("Graph data for field", f, ":", graph_data)
+                # print("Graph data for field", f, ":", graph_data)
                 
                 if f == "pm2.5_ug_m3":
                     if graph_data and len(graph_data) > 0 :
@@ -242,28 +242,127 @@ def generate_historical_data(days: int = 7, points_per_day: int = 24, baseline_p
                 temperature=temperature,
                 humidity=humidity
             ))
+    # print(data_points)
     data_points.sort(key=lambda x: x.timestamp)
     return data_points
 
-def generate_24hour_data() -> List[HourlyDataPoint]:
-    now = datetime.now()
-    hourly = []
-    for i in range(24):
-        timestamp = (now.replace(minute=0, second=0, microsecond=0) -
-                     timedelta(hours=23 - i))
-        hour = timestamp.hour
-        if (7 <= hour <= 9) or (16 <= hour <= 19):
-            base_pm25 = 30 + random.random() * 15
-        elif hour >= 22 or hour <= 5:
-            base_pm25 = 10 + random.random() * 5
-        else:
-            base_pm25 = 15 + random.random() * 10
-        hourly.append(HourlyDataPoint(
-            time=timestamp,
-            pm25=base_pm25,
-            aqi=calculate_aqi(base_pm25)
-        ))
-    return hourly
+
+# def generate_historical_data(days: int = 30) -> Dict[str, List[Dict]]:
+#     sensor_id = "clw9wuxop000bfi7rod4j6ae5"
+#     # Start at midnight (UTC) `days-1` ago:
+#     start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days-1)
+
+#     historical: Dict[str, List[Dict]] = {sensor_id: []}
+#     for day_offset in range(days):
+#         day = start + timedelta(days=day_offset)
+#         # Format the datetime in ISO format with 'Z' suffix
+#         formatted_time = day.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+#         # 1. PM2.5 daily average via your existing generator
+#         pm_records = generate_24hour_data(formatted_time, "pm2.5_ug_m3")
+#         # print(pm_records)
+#         pm25_avg = sum(r["pm25"] for r in pm_records) / len(pm_records)
+
+#         # # 2. Temperature daily average
+#         # temp_records = generate_24hour_data(formatted_time, "temperature_C")
+#         # temp_avg = sum(r["temperature"] for r in temp_records) / len(temp_records)
+
+#         # # 3. Humidity daily average
+#         # hum_records = generate_24hour_data(formatted_time, "humidity_percent")
+#         # hum_avg = sum(r["humidity"] for r in hum_records) / len(hum_records)
+
+#         historical[sensor_id].append({
+#             "timestamp": day.strftime("%Y-%m-%dT00:00:00"),
+#             "pm25": pm25_avg,
+#             # "temperature": temp_avg,
+#             # "humidity": hum_avg
+#         })
+
+#     return historical
+
+
+
+# def generate_24hour_data() -> List[HourlyDataPoint]:
+#     sensor_id = "clw9wuxop000bfi7rod4j6ae5"
+#     hourlyData = transform_data_from_url(f"https://www.simpleaq.org/api/getgraphdata?id={sensor_id}&field=pm2.5_ug_m3&rangehours=24&time={datetime.now().isoformat()}")
+#     print(hourlyData)
+#     now = datetime.now()
+#     hourly = []
+#     for i in range(24):
+#         timestamp = (now.replace(minute=0, second=0, microsecond=0) -
+#                      timedelta(hours=23 - i))
+#         hour = timestamp.hour
+#         if (7 <= hour <= 9) or (16 <= hour <= 19):
+#             base_pm25 = 30 + random.random() * 15
+#         elif hour >= 22 or hour <= 5:
+#             base_pm25 = 10 + random.random() * 5
+#         else:
+#             base_pm25 = 15 + random.random() * 10
+#         hourly.append(HourlyDataPoint(
+#             time=timestamp,
+#             pm25=base_pm25,
+#             aqi=calculate_aqi(base_pm25)
+#         ))
+#     return hourly
+
+def generate_24hour_data(time, field) -> List[HourlyDataPoint]:
+    sensor_id = "clw9wuxop000bfi7rod4j6ae5"
+    raw = transform_data_from_url(sensor_id, field, time)
+    
+    # Parse timestamps and values
+    records = [
+        (datetime.fromisoformat(ts.rstrip("Z")).replace(tzinfo=timezone.utc), float(val))
+        for ts, val in zip(raw["time"], raw["value"])
+    ]
+    
+    # Group data by hour
+    hourly_data = {}
+    for timestamp, value in records:
+        hour_key = timestamp.replace(minute=0, second=0, microsecond=0)
+        if hour_key not in hourly_data:
+            hourly_data[hour_key] = []
+        hourly_data[hour_key].append(value)
+    
+    # Calculate hourly averages
+    result = []
+    for hour in sorted(hourly_data.keys()):
+        values = hourly_data[hour]
+        pm25_avg = sum(values) / len(values)
+        aqi = calculate_aqi(pm25_avg)
+        
+        data_point = {
+            "time": hour.strftime("%Y-%m-%dT%H:00:00")
+        }
+        
+        if field == "pm2.5_ug_m3":
+            data_point.update({
+                "pm25": round(pm25_avg, 4),
+                "aqi": aqi
+            })
+        elif field == "temperature_C":
+            data_point["temperature"] = round(pm25_avg, 2)
+        elif field == "humidity_percent":
+            data_point["humidity"] = round(pm25_avg, 2)
+            
+        result.append(data_point)
+    
+    return result
+
+
+def transform_data_from_url(sensor_id, field, time) -> dict:
+    # URL encode the time parameter
+    encoded_time = time.replace(":", "%3A").replace(".", "%2E")
+    url = f"https://www.simpleaq.org/api/getgraphdata?id={sensor_id}&field={field}&rangehours=24&time={encoded_time}"
+    response = httpx.get(url)
+    response.raise_for_status()  # ensures it throws an error if response code is not 200
+
+    data = response.json()
+
+    # Remove the 'sensor' column
+    data.pop("sensor", None)
+
+    return data
+
 
 def calculate_statistics(sensors: List[Sensor]) -> Dict:
     if not sensors:
@@ -284,13 +383,11 @@ def calculate_statistics(sensors: List[Sensor]) -> Dict:
     }
 
 def refresh_data():
-    print("Refreshing data...", datetime.now().isoformat())
+    # print("Refreshing data...", datetime.now().isoformat())
     raw_data = fetch_pm25_data()
     sensors = generate_sensors(raw_data)
-    historical = {}
-    for sensor in sensors:
-        historical[sensor.id] = generate_historical_data(7, 24, sensor.pm25 * 0.8)
-    hourly = generate_24hour_data()
+    historical = generate_historical_data(7, 24, 15)
+    hourly = generate_24hour_data(datetime.now().isoformat(), "pm2.5_ug_m3")
     stats = calculate_statistics(sensors)
     
     DATA["sensors"] = sensors
