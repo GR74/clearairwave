@@ -139,10 +139,10 @@ const Index = () => {
               Demo application with simulated data and real data • {new Date().getFullYear()}
             </p> */}
             <p className="text-xs text-muted-foreground mt-2">
-              Made by Aniket Chaudhari, Gowrish Rajagopal, Yasharth Pandey
-            </p>
-            <p className="text-xs text-muted-foreground mt-2">
-              Huge thanks to the SimpleAQ team!
+              Made by    
+              <a href="https://www.linkedin.com/in/aniket-chaudhari-12238833a/" className="text-blue-400 "> Aniket Chaudhari</a>, 
+              <a href="https://www.linkedin.com/in/gowrishrajagopal/" className="text-blue-400 "> Gowrish Rajagopal</a>, 
+              <a href="https://www.linkedin.com/in/yasharth-pandey/" className="text-blue-400 "> Yasharth Pandey</a>
             </p>
           </div>
           <div className="border-t border-border pt-8 text-center">

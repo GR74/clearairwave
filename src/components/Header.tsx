@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, BarChart, Map, Home, Info, Bell, Moon, Sun } from 'lucide-react';
+import { Menu, X, BarChart, Map, Home, Info, Bell, Moon, Sun} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Mail } from 'lucide-react';
+
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -99,13 +100,6 @@ const Header = () => {
 
         {/* Action Buttons */}
         <div className="hidden md:flex items-center space-x-2">
-          {/* <Button variant="ghost" size="icon" onClick={toggleDarkMode} className="rounded-full">
-            {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          </Button> */}
-          <Button variant="ghost" size="icon" className="rounded-full">
-            <Bell className="h-5 w-5" />
-          </Button>
-          {/* <Button className="rounded-full">Sign In</Button> */}
         </div>
 
         {/* Mobile Navigation Button */}
