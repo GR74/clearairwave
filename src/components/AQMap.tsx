@@ -111,9 +111,9 @@ const AQMap = () => {
         style={{ height: '100%', width: '100%' }}
         className="z-0"
       >
-        <TileLayer
-  attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-  url="https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+     <TileLayer
+  attribution='&copy; <a href="https://carto.com/">Carto</a>'
+  url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
 />
 
 
@@ -133,19 +133,23 @@ const AQMap = () => {
               position={position}
               icon={createColoredIcon(sensor.aqiCategory?.color || '#4ade80')}
               eventHandlers={{
-                click: (e) => {
-                  const map = e.target._map; // Access the map instance from the event
-                  setSelectedSensor(sensor.id);
+  click: (e) => {
+    const map = e.target._map;
+    const marker = e.target;
+    setSelectedSensor(sensor.id);
 
-                  // Check if the current zoom level is below a threshold (e.g., 12)
-                  if (map.getZoom() < 12) {
-                    map.flyTo(position, 15, { animate: true, duration: 0.5 }); // Smoothly fly to the marker
-                  }
+    if (map.getZoom() < 15) {
+      map.flyTo(position, 15, { animate: true, duration: 0.5 });
 
-                  // Open the popup programmatically
-                  e.target.openPopup();
-                },
-              }}
+      map.once('moveend', () => {
+        marker.openPopup();
+      });
+    } else {
+      marker.openPopup();
+    }
+  },
+}}
+
             >
               <Popup>
                 <div className="p-1">
