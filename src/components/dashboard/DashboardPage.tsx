@@ -100,7 +100,7 @@ useEffect(() => {
 
   const intervalId = setInterval(fetchData, 300000);
   return () => clearInterval(intervalId);
-}, [timeRange, selectedSensorId, selectedMetric]);
+}, [timeRange]);
 
   if (error) {
     return (
