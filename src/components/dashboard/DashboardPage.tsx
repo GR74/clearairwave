@@ -78,29 +78,48 @@ const DashboardPage = () => {
   const [error, setError] = useState<Error | null>(null);
   const [realSensors, setRealSensors] = useState<any[]>([]);
   const [hourlyData, setHourlyData] = useState<any[]>([]);
+
 useEffect(() => {
-  const fetchData = async () => {
+  const fetchMainData = async () => {
     try {
       setIsLoading(true);
-      const [sensorResponse, hourlyResponse] = await Promise.all([
-        axios.get('http://localhost:3001/api/sensors'),
-        axios.get('http://localhost:3001/api/hourly'), // Adjust this later based on range
-      ]);
-      setRealSensors(sensorResponse.data);
-      setHourlyData(hourlyResponse.data);
-      setLastUpdated(new Date()); // ✅ Move this inside effect triggered by timeRange
-      setIsLoading(false);
+      const response = await axios.get('http://localhost:3001/api/sensors');
+      setRealSensors(response.data);
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch data'));
+      setError(err instanceof Error ? err : new Error('Failed to fetch sensors'));
+    } finally {
       setIsLoading(false);
     }
   };
 
-  fetchData();
+  fetchMainData();
+}, []);
 
-  const intervalId = setInterval(fetchData, 300000);
-  return () => clearInterval(intervalId);
-}, [timeRange]);
+const [isChartLoading, setIsChartLoading] = useState(true);
+
+useEffect(() => {
+  const fetchChartData = async () => {
+    try {
+      setIsChartLoading(true);
+      const response = await axios.get('http://localhost:3001/api/hourly', {
+        params: {
+          timeRange,
+          sensorId: selectedSensorId,
+          metric: selectedMetric,
+        },
+      });
+      setHourlyData(response.data);
+      setLastUpdated(new Date());
+    } catch (err) {
+      console.error("Chart data fetch failed", err);
+    } finally {
+      setIsChartLoading(false);
+    }
+  };
+
+  fetchChartData();
+}, [timeRange, selectedSensorId, selectedMetric]);
+
 
   if (error) {
     return (
@@ -115,7 +134,7 @@ useEffect(() => {
     );
   }
 
-  if (isLoading || !realSensors || !hourlyData) {
+  if (isLoading || realSensors.length === 0) {
     return (
       <div className="py-10">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
@@ -263,13 +282,18 @@ useEffect(() => {
   </p>
 )}
 
-              <AQIChart
-                type="line"
-                timeRange={timeRange}
-                sensorId={selectedSensorId}
-                selectedMetric={selectedMetric}
-                height={280}
-              />
+              {isChartLoading ? (
+  <Skeleton className="h-[280px] w-full" />
+) : (
+  <AQIChart
+    type="line"
+    timeRange={timeRange}
+    sensorId={selectedSensorId}
+    selectedMetric={selectedMetric}
+    height={280}
+  />
+)}
+
             </div>
 
 
