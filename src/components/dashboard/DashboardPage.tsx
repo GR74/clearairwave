@@ -25,6 +25,7 @@ const DashboardPage = () => {
   //Fetches sensor names for the dropdown for the AQIChart
   const [sensors, setSensors] = useState<SensorInfo[]>([]);
   const [selectedSensorId, setSelectedSensorId] = useState<string>('');
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const metricOptions = [
     "pm2.5", "pm10", "pm4", "pm1",
     "temperature", "humidity", "pressure",
@@ -77,28 +78,29 @@ const DashboardPage = () => {
   const [error, setError] = useState<Error | null>(null);
   const [realSensors, setRealSensors] = useState<any[]>([]);
   const [hourlyData, setHourlyData] = useState<any[]>([]);
+useEffect(() => {
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      const [sensorResponse, hourlyResponse] = await Promise.all([
+        axios.get('http://localhost:3001/api/sensors'),
+        axios.get('http://localhost:3001/api/hourly'), // Adjust this later based on range
+      ]);
+      setRealSensors(sensorResponse.data);
+      setHourlyData(hourlyResponse.data);
+      setLastUpdated(new Date()); // ✅ Move this inside effect triggered by timeRange
+      setIsLoading(false);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Failed to fetch data'));
+      setIsLoading(false);
+    }
+  };
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        const [sensorResponse, hourlyResponse] = await Promise.all([
-          axios.get('http://localhost:3001/api/sensors'),
-          axios.get('http://localhost:3001/api/hourly'),
-        ]);
-        setRealSensors(sensorResponse.data);
-        setHourlyData(hourlyResponse.data);
-        setIsLoading(false);
-      } catch (err) {
-        setError(err instanceof Error ? err : new Error('Failed to fetch data'));
-        setIsLoading(false);
-      }
-    };
+  fetchData();
 
-    fetchData();
-    const intervalId = setInterval(fetchData, 60000);
-    return () => clearInterval(intervalId);
-  }, []);
+  const intervalId = setInterval(fetchData, 300000);
+  return () => clearInterval(intervalId);
+}, [timeRange, selectedSensorId, selectedMetric]);
 
   if (error) {
     return (
@@ -255,6 +257,12 @@ const DashboardPage = () => {
             </div>
 
             <div className="mt-6">
+              {lastUpdated && (
+  <p className="text-xs text-muted-foreground mb-2">
+    Graph last updated: {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+  </p>
+)}
+
               <AQIChart
                 type="line"
                 timeRange={timeRange}
