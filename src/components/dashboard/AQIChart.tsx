@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
   LineChart,
-  BarChart,
+  // BarChart, // BarChart was imported but not used, consider removing if not planned for use
   Line,
-  Bar,
+  // Bar, // Bar was imported but not used
   XAxis,
   YAxis,
   CartesianGrid,
@@ -13,10 +13,10 @@ import {
   Text,
 } from 'recharts';
 import axios from 'axios';
-import { formatPM25 } from '@/utils/aqiUtils';
+// import { formatPM25 } from '@/utils/aqiUtils'; // This import was present but not used in the provided code.
 
 interface AQIChartProps {
-  type?: 'line' | 'bar';
+  type?: 'line' | 'bar'; // 'bar' type would require BarChart and Bar components
   data?: any[];
   timeRange?: '24h' | '7d' | '30d';
   sensorId?: string;
@@ -25,113 +25,136 @@ interface AQIChartProps {
 }
 
 const metricAliasMap: Record<string, string> = {
-  'pm2.5': 'pm25',
+  // Example: 'ozone': 'O3',
 };
 
 const AQIChart: React.FC<AQIChartProps> = ({
-  type = 'line',
+  type = 'line', // Currently, only LineChart is implemented
   data,
   timeRange = '24h',
   sensorId,
   height = 300,
   selectedMetric,
 }) => {
+  const dataKey = metricAliasMap[selectedMetric!] || selectedMetric!;
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch data only if `data` is not passed
   useEffect(() => {
-    if (data || !sensorId) return;
+    if (!selectedMetric) {
+      setLoading(false);
+      setError('No metric selected.');
+      return;
+    }
+    if (data || !sensorId) {
+        if (data) {
+            setChartData(data);
+            setLoading(false);
+        } else if (!sensorId && !data) { // Handle case where sensorId is missing and no data is provided
+            setLoading(false);
+            // setError('Sensor ID is required to fetch data.'); // Or set chartData to []
+            setChartData([]);
+        }
+        return;
+    }
 
     const fetchData = async () => {
       try {
         setLoading(true);
+        setError(null); 
 
         let responseData;
+        const backendField = metricAliasMap[selectedMetric!] || selectedMetric!;
 
         if (timeRange === '24h') {
           const response = await axios.get('http://localhost:3001/api/hourly', {
             params: {
               sensor_id: sensorId,
-              metric: selectedMetric,
+              metric: backendField, 
             },
-
           });
 
-          const backendField = metricAliasMap[selectedMetric!] || selectedMetric!;
-
-          responseData = response.data.map(item => ({
+          responseData = response.data.map((item: any) => ({
             time: new Date(item.time).toLocaleTimeString([], {
               hour: '2-digit',
               minute: '2-digit',
             }),
-            [selectedMetric!]: item[backendField],
+            [dataKey]: item[backendField],
           }));
         } else {
-          // Fetch simulated data from /api/historical
+          // Fetch historical data from /api/historical
           const response = await axios.get('http://localhost:3001/api/historical', {
-            params: { sensor_id: sensorId },
+            params: { 
+              sensor_id: sensorId,
+              metric: backendField,
+            },
           });
 
           const now = new Date();
-          let filtered = [...response.data];
+          // Start with the full data from the API response for the historical range
+          let filteredHistoricalData = [...response.data];
 
           if (timeRange === '7d') {
-            filtered = filtered
-              .filter(item => new Date(item.timestamp) > new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000))
-              .filter((_, i) => i % 6 === 0);
+            const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            filteredHistoricalData = filteredHistoricalData
+              .filter((item: any) => new Date(item.timestamp) > sevenDaysAgo);
+            // REMOVED: .filter((_: any, i: number) => i % 6 === 0); 
+            // Now all data points within the last 7 days will be included.
           } else if (timeRange === '30d') {
-            filtered = filtered
-              .filter(item => new Date(item.timestamp) > new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000))
-              .filter((_, i) => i % 24 === 0);
+            const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            filteredHistoricalData = filteredHistoricalData
+              .filter((item: any) => new Date(item.timestamp) > thirtyDaysAgo);
+            // REMOVED: .filter((_: any, i: number) => i % 24 === 0); 
+            // Now all data points within the last 30 days will be included.
+            // If 30 points are too many for the X-axis, consider a less aggressive sampling,
+            // e.g., filteredHistoricalData = filteredHistoricalData.filter((_: any, i: number) => i % 2 === 0); // for every other day
           }
 
-          responseData = filtered.map(item => ({
-            ...item,
-            time: new Date(item.timestamp).toLocaleDateString(),
+          responseData = filteredHistoricalData.map((item: any) => ({
+            ...item, 
+            time: new Date(item.timestamp).toLocaleDateString([], {month: 'numeric', day: 'numeric'}), // e.g., "5/14"
+            [dataKey]: item[backendField],
           }));
         }
 
         setChartData(responseData);
         setError(null);
       } catch (err) {
-        console.error(err);
-        setError('Failed to load chart data');
+        console.error("Error fetching chart data:", err);
+        setError(`Failed to load chart data for ${selectedMetric}.`);
       } finally {
         setLoading(false);
       }
     };
 
-
     fetchData();
-  }, [sensorId, timeRange, data, selectedMetric]);
-
-  const dataKey = metricAliasMap[selectedMetric!] || selectedMetric!;
+  }, [sensorId, timeRange, data, selectedMetric, dataKey]);
 
   const finalData = data || chartData;
+
   const getMaxValue = () => {
-    const values = finalData.map(d => d[selectedMetric!] ?? 0);
+    if (!selectedMetric || finalData.length === 0) return 100; 
+    const values = finalData.map(d => d[dataKey!] ?? 0).filter(v => typeof v === 'number');
+    if (values.length === 0) return 100; 
     const max = Math.max(...values);
 
     const metricMaxStrategies: Record<string, () => number> = {
-      'pm25': () => Math.ceil(Math.min(max * 1.2, 500)),
-      'pm2.5': () => Math.ceil(Math.min(max * 1.2, 500)),
-      'pm10': () => Math.ceil(Math.min(max * 1.2, 500)),
-      'pm4': () => Math.ceil(Math.min(max * 1.2, 500)),
-      'pm1': () => Math.ceil(Math.min(max * 1.2, 500)),
+      'pm2.5': () => Math.ceil(Math.min(Math.max(10, max * 1.2), 500)), 
+      'pm10': () => Math.ceil(Math.min(Math.max(10, max * 1.2), 500)),
+      'pm4': () => Math.ceil(Math.min(Math.max(10, max * 1.2), 500)),
+      'pm1': () => Math.ceil(Math.min(Math.max(10, max * 1.2), 500)),
       'temperature': () => Math.ceil(max + 5),
       'humidity': () => 100,
       'pressure': () => Math.ceil(max + 10),
-      'NO2': () => Math.ceil(Math.min(max * 1.2, 5)),
-      'O3': () => Math.ceil(Math.min(max * 1.2, 5)),
-      'SO2': () => Math.ceil(Math.min(max * 1.2, 5)),
+      'NO2': () => Math.ceil(Math.min(Math.max(0.1, max * 1.2), 5)), 
+      'O3': () => Math.ceil(Math.min(Math.max(0.1, max * 1.2), 5)),
+      'SO2': () => Math.ceil(Math.min(Math.max(0.1, max * 1.2), 5)),
     };
 
-    const fallback = () => Math.ceil(max * 1.1);
+    const fallback = () => Math.ceil(Math.max(10, max * 1.1)); 
     return (metricMaxStrategies[selectedMetric!] || fallback)();
   };
-
 
   const metricColors: Record<string, string> = {
     'pm2.5': '#3b82f6',
@@ -144,7 +167,6 @@ const AQIChart: React.FC<AQIChartProps> = ({
     'NO2': '#ef4444',
     'O3': '#22c55e',
     'SO2': '#eab308',
-    'pm25': '#3b82f6', // fallback for pm25 alias
   };
   const chartColor = metricColors[selectedMetric || 'pm2.5'] || '#64748b';
 
@@ -159,25 +181,19 @@ const AQIChart: React.FC<AQIChartProps> = ({
     'NO2': 'ppm',
     'O3': 'ppm',
     'SO2': 'ppm',
-    'pm25': 'µg/m³',
   };
   const yLabel = metricUnits[selectedMetric || 'pm2.5'] || '';
 
-
   const maxValue = getMaxValue();
 
-
-  const hasTemperature = finalData.some(d => d.temperature !== undefined);
-  const hasHumidity = finalData.some(d => d.humidity !== undefined);
-
   const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
+    if (active && payload && payload.length && selectedMetric) {
       return (
-        <div className="glass-card p-3 rounded-md shadow-sm text-sm">
-          <p className="font-medium">{label}</p>
+        <div className="bg-white/80 backdrop-blur-sm p-3 rounded-lg shadow-lg border border-gray-200 text-sm">
+          <p className="font-semibold text-gray-700 mb-1">{label}</p>
           {payload.map((entry: any, index: number) => (
-            <p key={`item-${index}`} style={{ color: entry.color }}>
-              {entry.name}: {entry.value} {metricUnits[selectedMetric || 'pm2.5']}
+            <p key={`item-${index}`} style={{ color: entry.color }} className="text-gray-600">
+              {entry.name}: <span className="font-bold">{entry.value}</span> {metricUnits[selectedMetric]}
             </p>
           ))}
         </div>
@@ -185,46 +201,65 @@ const AQIChart: React.FC<AQIChartProps> = ({
     }
     return null;
   };
-  if ((loading && !data) || finalData.length === 0) {
+
+  // Condition for loading or no data
+  const showLoadingOrNoData = (loading && !data) || (!loading && finalData.length === 0 && !error && sensorId);
+
+  if (showLoadingOrNoData) {
     return (
       <div className="w-full h-[300px] flex flex-col items-center justify-center animate-fade-in">
         <div className="relative w-16 h-16 mb-4">
-          {/* Outer Ring - Orbit Spin */}
-          <div className="absolute inset-0 rounded-full border-[6px] border-t-transparent border-l-transparent border-aqi.good animate-spin-slow blur-sm opacity-100 shadow-[0_0_20px_#4ade80]" />
-
-          {/* Middle Ring - Reverse Spin */}
-          <div className="absolute inset-1 rounded-full border-[4px] border-r-transparent border-b-transparent border-aqi.moderate animate-spin-reverse blur-sm opacity-100" />
-
-          {/* Core Pulse Dot */}
-          <div className="absolute top-1/2 left-1/2 w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-aqi.hazardous animate-ping-slow shadow-md" />
+          <div className="absolute inset-0 rounded-full border-[6px] border-t-transparent border-l-transparent border-blue-500 animate-spin-slow blur-sm opacity-100 shadow-[0_0_20px_#3b82f6]" />
+          <div className="absolute inset-1 rounded-full border-[4px] border-r-transparent border-b-transparent border-sky-400 animate-spin-reverse blur-sm opacity-100" />
+          <div className="absolute top-1/2 left-1/2 w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-600 animate-ping-slow shadow-md" />
         </div>
-
-        <p className="text-sm text-center text-muted-foreground animate-pulse-slow tracking-wide">
-          {loading ? 'Fetching real-time air quality data...' : 'No data available'}
+        <p className="text-sm text-center text-gray-500 animate-pulse-slow tracking-wide">
+          {loading ? `Fetching ${selectedMetric || 'air quality'} data...` : `No data available for ${selectedMetric || 'the selected metric'}.`}
         </p>
       </div>
     );
   }
 
-
   if (error) {
     return (
-      <div className="w-full h-[300px] flex items-center justify-center text-red-500">
-        {error}
+      <div className="w-full h-[300px] flex flex-col items-center justify-center text-red-600 p-4 bg-red-50 rounded-lg">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-2 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+        </svg>
+        <p className="font-semibold">Error Loading Chart</p>
+        <p className="text-sm text-center">{error}</p>
+      </div>
+    );
+  }
+  
+  if (!selectedMetric) {
+    return (
+      <div className="w-full h-[300px] flex items-center justify-center text-gray-500">
+        Please select a metric to display the chart.
       </div>
     );
   }
 
-  console.log("Selected metric:", selectedMetric);
-  console.log("Resolved dataKey:", dataKey);
-  console.log("Final data:", finalData);
+  // If after all checks, finalData is still empty (e.g. API returned empty for a valid query)
+  if (finalData.length === 0) {
+    return (
+         <div className="w-full h-[300px] flex flex-col items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-sm text-center text-gray-500">
+                No data points available for {selectedMetric} in the selected range.
+            </p>
+        </div>
+    );
+  }
+
 
   return (
-    <div className="w-full overflow-hidden">
+    <div className="w-full overflow-hidden bg-white p-4 rounded-xl shadow-lg">
       <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={finalData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-
+        <LineChart data={finalData} margin={{ top: 5, right: 30, left: 20, bottom: 40 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis
             dataKey="time"
             tick={(props) => {
@@ -233,53 +268,53 @@ const AQIChart: React.FC<AQIChartProps> = ({
                 <Text
                   x={x}
                   y={y}
-                  angle={-45}
+                  dy={10} 
+                  angle={-35} 
                   textAnchor="end"
-                  verticalAnchor="middle"
                   fontSize={10}
-                  fill="#666"
+                  fill="#6b7280" 
                 >
                   {payload.value}
                 </Text>
               );
             }}
-            height={60}
+            height={50} 
+            interval="preserveStartEnd" 
           />
-
           <YAxis
             label={{
               value: yLabel,
               angle: -90,
               position: 'insideLeft',
+              fill: '#4b5563', 
+              fontSize: 12,
+              dy: 40, 
             }}
-
             domain={[0, maxValue]}
-            tick={{ fontSize: 12 }}
+            tick={{ fontSize: 10, fill: '#6b7280' }}
+            stroke="#d1d5db" 
           />
-
           <Tooltip content={<CustomTooltip />} />
-          <Legend />
+          <Legend
+            formatter={(value, entry) => <span style={{ color: entry.color }}>{value}</span>}
+            wrapperStyle={{ paddingTop: '20px' }} 
+          />
           <Line
             type="monotone"
-            dataKey={selectedMetric}
+            dataKey={dataKey} 
             name={selectedMetric?.toUpperCase()}
-
             stroke={chartColor}
-            fill={chartColor}
-
-            strokeWidth={2}
-            dot={{ r: 2 }}
-            activeDot={{ r: 5 }}
-            animationDuration={1500}
+            fillOpacity={0.1} 
+            strokeWidth={2.5}
+            dot={{ r: 3, strokeWidth: 1, fill: chartColor }}
+            activeDot={{ r: 6, stroke: '#ffffff', strokeWidth: 2, fill: chartColor }}
+            animationDuration={1000}
+            connectNulls={true} 
           />
-
         </LineChart>
-
       </ResponsiveContainer>
     </div>
-
   );
-
 };
 
 export default AQIChart;
