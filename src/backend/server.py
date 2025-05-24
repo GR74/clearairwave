@@ -566,6 +566,13 @@ scheduler.start()
 def get_sensors():
     return DATA["sensors"]
 
+@app.get("/api/refreshtable")
+def get_sensors():
+    refresh_data()
+    return DATA["sensors"]
+
+
+
 @app.get("/api/historical")
 def get_historical(sensor_id: Optional[str] = Query(None), metric: Optional[str] = Query(None)):
     if not sensor_id:
