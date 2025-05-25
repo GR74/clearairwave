@@ -7,6 +7,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { RefreshCcw } from 'lucide-react';
+
 
 const categories = [
   'Good',
@@ -27,6 +29,19 @@ const DataTable = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+
+  const refreshData = async () => {
+  try {
+    setIsLoading(true);
+    const response = await axios.get('http://localhost:3001/api/refreshtable');
+    setRealSensors(response.data);
+  } catch (err) {
+    setError(err instanceof Error ? err : new Error('Failed to refresh sensor data'));
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   // Fetch real-time sensor data
   useEffect(() => {
@@ -139,6 +154,7 @@ const DataTable = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-4">
         <h3 className="text-lg font-medium">Sensor Readings</h3>
         <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-3">
+        
           {/* Search */}
           <div className="relative w-full sm:w-auto">
             <input
@@ -212,6 +228,11 @@ const DataTable = () => {
               </div>
             </PopoverContent>
           </Popover>
+          <Button onClick={refreshData} variant="outline" size="sm" className="h-9">
+  <RefreshCcw className="h-4 w-4 mr-2" />
+  Refresh
+</Button>
+
         </div>
       </div>
       <div className="overflow-x-auto">

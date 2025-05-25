@@ -549,6 +549,13 @@ scheduler.start()
 def get_sensors():
     return DATA["sensors"]
 
+@app.get("/api/refreshtable")
+def get_sensors():
+    refresh_data()
+    return DATA["sensors"]
+
+
+
 @app.get(
     "/api/historical",
     response_model=List[HistoricalDataPoint]
