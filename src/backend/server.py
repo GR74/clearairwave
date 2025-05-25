@@ -6,12 +6,19 @@ from datetime import datetime, timedelta
 import random
 import math
 import time
+import asyncio
 from pydantic import BaseModel
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from datetime import datetime, timezone
 from fastapi import Query
 from collections import defaultdict
 import uvicorn
+from tenacity import (
+    retry,
+    stop_after_delay,
+    wait_exponential,
+    retry_if_exception_type,
+)
 
 # ----------------------------------------
 # AQI Utility Functions (from aqiUtils.ts)
@@ -41,6 +48,20 @@ DATA_VAL_DICT = {
 }
 
 INVERSE_DATA_VAL_DICT = {v: k for k, v in DATA_VAL_DICT.items()}
+
+NUM_DAILY_POINTS_TO_RETURN = 35
+CHUNK_DURATION_DAYS = 7
+CHUNK_DURATION_HOURS = CHUNK_DURATION_DAYS * 24
+
+# Adjust these retry parameters as you like
+@retry(
+    stop=stop_after_delay(30),              # give up after 30s
+    wait=wait_exponential(multiplier=1, min=1, max=10),
+    retry=(
+        retry_if_exception_type(httpx.RequestError) |
+        retry_if_exception_type(httpx.HTTPStatusError)
+    ),
+)
 
 
 def calculate_aqi(pm25: float) -> int:
@@ -318,131 +339,93 @@ def generate_sensors(sensor_json: dict) -> List[Sensor]:
 
 #     return result
 
-def generate_historical_data(sensor_id: str, api_field: str) -> List[Dict[str, Optional[float]]]:
+async def _fetch_chunk_async(
+    client: httpx.AsyncClient,
+    sensor_id: str,
+    api_field: str,
+    end_time_iso: str,
+    range_hours: int,
+) -> Dict[str, Any]:
     """
-    Generates historical daily average data for a given sensor and API field.
-    Fetches raw data in smaller (e.g., 3-day) chunks to avoid server timeouts,
-    and then calculates daily averages for the last NUM_DAILY_POINTS_TO_RETURN days.
+    Fetch one chunk of data, retrying on network or HTTP errors
+    until either success or 30s total elapsed.
     """
-    NUM_DAILY_POINTS_TO_RETURN = 35  # Number of past daily averages to return
-    CHUNK_DURATION_DAYS = 4          # Fetch data in 3-day chunks
-    CHUNK_DURATION_HOURS = CHUNK_DURATION_DAYS * 24
+    url = (
+        f"https://www.simpleaq.org/api/getgraphdata"
+        f"?id={sensor_id}"
+        f"&field={api_field}"
+        f"&rangehours={range_hours}"
+        f"&time={end_time_iso}"
+    )
+    resp = await client.get(url, timeout=httpx.Timeout(10.0, read=60.0))
+    resp.raise_for_status()
+    data = resp.json()
+    data.pop("sensor", None)
+    # ensure shape
+    return {
+        "time": data.get("time", []),
+        "value": data.get("value", []),
+    }
 
-    output_metric_key = INVERSE_DATA_VAL_DICT.get(api_field)
-    if output_metric_key is None:
-        raise ValueError(f"No matching output key found in INVERSE_DATA_VAL_DICT for API field: {api_field}")
 
-    daily_values_sum = defaultdict(float)
-    daily_values_count = defaultdict(int)
-    
+async def generate_historical_data(
+    sensor_id: str, api_field: str
+) -> List[Dict[str, Optional[float]]]:
+    output_key = INVERSE_DATA_VAL_DICT.get(api_field)
+    if output_key is None:
+        raise ValueError(f"No matching output key for API field: {api_field}")
+
     now_utc = datetime.now(timezone.utc)
-    
-    # Calculate how many chunks are needed to cover NUM_DAILY_POINTS_TO_RETURN days
-    # Add (CHUNK_DURATION_DAYS - 1) to ensure full coverage with integer division
-    num_chunks_to_fetch = (NUM_DAILY_POINTS_TO_RETURN + (CHUNK_DURATION_DAYS - 1)) // CHUNK_DURATION_DAYS
-    
-    # print(f"Attempting to generate {NUM_DAILY_POINTS_TO_RETURN} daily data points for API field '{api_field}'.")
-    # print(f"Will fetch in {CHUNK_DURATION_DAYS}-day chunks, requiring approx. {num_chunks_to_fetch} API calls.")
+    # prepare all 7-day-chunk end times
+    end_times = [
+        (now_utc - timedelta(days=i * CHUNK_DURATION_DAYS))
+        .strftime("%Y-%m-%dT%H:%M:%S.000Z")
+        for i in range((NUM_DAILY_POINTS_TO_RETURN + CHUNK_DURATION_DAYS - 1) // CHUNK_DURATION_DAYS)
+    ]
 
-    for chunk_idx in range(num_chunks_to_fetch):
-        # Calculate the end_time for this chunk. We fetch backwards from now_utc.
-        # chunk_idx = 0: fetches data for the chunk ending now_utc.
-        # chunk_idx = 1: fetches data for the chunk ending (now_utc - CHUNK_DURATION_DAYS), etc.
-        api_call_end_time = now_utc - timedelta(days=chunk_idx * CHUNK_DURATION_DAYS)
-        api_call_end_time_iso = api_call_end_time.strftime("%Y-%m-%dT%H:%M:%S.000Z")
-        
-        # print(f"  Fetching chunk {chunk_idx + 1}/{num_chunks_to_fetch}, data ending around {api_call_end_time_iso} for field '{api_field}' ({CHUNK_DURATION_HOURS} hours)")
-        raw_data_chunk = transform_data_from_url(
-            sensor_id, 
-            api_field,
-            time=api_call_end_time_iso, 
-            range_hours=CHUNK_DURATION_HOURS
-        )
+    daily_sum = defaultdict(float)
+    daily_count = defaultdict(int)
 
-        chunk_times = raw_data_chunk.get("time", [])
-        chunk_values = raw_data_chunk.get("value", [])
+    async with httpx.AsyncClient() as client:
+        # schedule all fetches concurrently
+        tasks = [
+            _fetch_chunk_async(client, sensor_id, api_field, end_time_iso, CHUNK_DURATION_HOURS)
+            for end_time_iso in end_times
+        ]
+        # gather results (will raise if unrecoverable after retries)
+        chunks = await asyncio.gather(*tasks, return_exceptions=False)
 
-        if not (isinstance(chunk_times, list) and isinstance(chunk_values, list)):
-            # print(f"  Warning: Expected lists for time/value in chunk {chunk_idx + 1}. Skipping.")
-            continue
-        
-        # print(f"    Fetched {len(chunk_times)} data points in chunk {chunk_idx + 1}.")
-
-        for j in range(min(len(chunk_times), len(chunk_values))):
-            ts_str = chunk_times[j]
-            value_str = chunk_values[j]
-            
+    # aggregate each chunk
+    for chunk in chunks:
+        for ts_str, val_str in zip(chunk["time"], chunk["value"]):
             try:
-                if not isinstance(ts_str, str) or not isinstance(value_str, (str, int, float)):
-                    continue
+                dt = (
+                    datetime.fromisoformat(str(ts_str).rstrip("Z"))
+                    .replace(tzinfo=timezone.utc)
+                )
+                date_key = dt.date()
+                val = float(val_str)
+                daily_sum[date_key] += val
+                daily_count[date_key] += 1
+            except Exception:
+                continue
 
-                dt_object = datetime.fromisoformat(str(ts_str).rstrip("Z")).replace(tzinfo=timezone.utc)
-                date_key = dt_object.date() # Group by date
-                
-                val = float(value_str)
-                
-                daily_values_sum[date_key] += val
-                daily_values_count[date_key] += 1
-            except ValueError:
-                # print(f"    Skipping data point due to ValueError: ts='{ts_str}', val='{value_str}'")
-                pass
-            except Exception as e:
-                # print(f"    Skipping data point due to error: {e}, ts='{ts_str}', val='{value_str}'")
-                pass
-        
-        # Optional: Add a small delay between API calls if you suspect rate limiting
-        # time_module.sleep(0.5) # e.g., 0.5 seconds delay
-
-    print(f"Finished fetching. Aggregated data for {len(daily_values_sum)} unique dates.")
-
-    result_list: List[Dict[str, Optional[float]]] = []
-    
-    # Generate entries for the last 'NUM_DAILY_POINTS_TO_RETURN' days, ending with today.
-    for day_offset in range(NUM_DAILY_POINTS_TO_RETURN - 1, -1, -1): 
-        current_report_date = (now_utc - timedelta(days=day_offset)).date()
-        
-        avg_value_rounded: Optional[float] = None
-        if current_report_date in daily_values_count and daily_values_count[current_report_date] > 0:
-            avg_value = daily_values_sum[current_report_date] / daily_values_count[current_report_date]
-            avg_value_rounded = round(avg_value, 4)
-        
-        timestamp_dt_obj = datetime(
-            current_report_date.year, 
-            current_report_date.month, 
-            current_report_date.day, 
-            0, 0, 0, tzinfo=timezone.utc # Midnight UTC for that day
+    # build final 35-day list
+    result: List[Dict[str, Optional[float]]] = []
+    for offset in range(NUM_DAILY_POINTS_TO_RETURN - 1, -1, -1):
+        d = (now_utc - timedelta(days=offset)).date()
+        avg = (
+            round(daily_sum[d] / daily_count[d], 4)
+            if daily_count[d] > 0
+            else None
         )
-        timestamp_str = timestamp_dt_obj.strftime("%Y-%m-%dT00:00:00") # Format as requested
+        ts = datetime(d.year, d.month, d.day, tzinfo=timezone.utc)
+        result.append({
+            "timestamp": ts.strftime("%Y-%m-%dT00:00:00"),
+            output_key: avg
+        })
 
-        entry: Dict[str, any] = {"timestamp": timestamp_str}
-        entry[output_metric_key] = avg_value_rounded
-        result_list.append(entry) # type: ignore 
-    
-    print(f"Generated {len(result_list)} daily average data points.")
-    return result_list
-
-# def generate_24hour_data() -> List[HourlyDataPoint]:
-#     sensor_id = "clw9wuxop000bfi7rod4j6ae5"
-#     hourlyData = transform_data_from_url(f"https://www.simpleaq.org/api/getgraphdata?id={sensor_id}&field=pm2.5_ug_m3&rangehours=24&time={datetime.now().isoformat()}")
-#     print(hourlyData)
-#     now = datetime.now()
-#     hourly = []
-#     for i in range(24):
-#         timestamp = (now.replace(minute=0, second=0, microsecond=0) -
-#                      timedelta(hours=23 - i))
-#         hour = timestamp.hour
-#         if (7 <= hour <= 9) or (16 <= hour <= 19):
-#             base_pm25 = 30 + random.random() * 15
-#         elif hour >= 22 or hour <= 5:
-#             base_pm25 = 10 + random.random() * 5
-#         else:
-#             base_pm25 = 15 + random.random() * 10
-#         hourly.append(HourlyDataPoint(
-#             time=timestamp,
-#             pm25=base_pm25,
-#             aqi=calculate_aqi(base_pm25)
-#         ))
-#     return hourly
+    return result
 
 def generate_24hour_data(time, field, sensor_id) -> List[HourlyDataPoint]:
     raw = transform_data_from_url(sensor_id, field, time, 24)
@@ -566,20 +549,30 @@ scheduler.start()
 def get_sensors():
     return DATA["sensors"]
 
-@app.get("/api/historical")
-def get_historical(sensor_id: Optional[str] = Query(None), metric: Optional[str] = Query(None)):
+@app.get(
+    "/api/historical",
+    response_model=List[HistoricalDataPoint]
+)
+async def get_historical(
+    sensor_id: Optional[str] = Query(None),
+    metric:    Optional[str] = Query(None),
+):
+    # default sensor
     if not sensor_id:
         if not DATA["sensors"]:
             return []
         sensor_id = DATA["sensors"][0].id
+
+    # default metric
     if not metric:
         metric = "pm2.5"
-        
+
     backend_field = DATA_VAL_DICT.get(metric)
     if backend_field is None:
         return []
 
-    return generate_historical_data(sensor_id, backend_field)
+    # **await** your async function here
+    return await generate_historical_data(sensor_id, backend_field)
 
 
 
