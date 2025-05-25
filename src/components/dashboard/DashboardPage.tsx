@@ -77,7 +77,6 @@ const DashboardPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [realSensors, setRealSensors] = useState<any[]>([]);
-  const [hourlyData, setHourlyData] = useState<any[]>([]);
 
 useEffect(() => {
   const fetchMainData = async () => {
@@ -94,32 +93,6 @@ useEffect(() => {
 
   fetchMainData();
 }, []);
-
-const [isChartLoading, setIsChartLoading] = useState(true);
-
-useEffect(() => {
-  const fetchChartData = async () => {
-    try {
-      setIsChartLoading(true);
-      const response = await axios.get('http://localhost:3001/api/hourly', {
-        params: {
-          timeRange,
-          sensorId: selectedSensorId,
-          metric: selectedMetric,
-        },
-      });
-      setHourlyData(response.data);
-      setLastUpdated(new Date());
-    } catch (err) {
-      console.error("Chart data fetch failed", err);
-    } finally {
-      setIsChartLoading(false);
-    }
-  };
-
-  fetchChartData();
-}, [timeRange, selectedSensorId, selectedMetric]);
-
 
   if (error) {
     return (
@@ -165,8 +138,6 @@ useEffect(() => {
     minPM25: Math.min(...realSensors.map(s => s.pm25)),
   };
 
-  const dailyAvg = hourlyData.reduce((sum, item) => sum + item.pm25, 0) / hourlyData.length;
-
   const highestSensors = [...realSensors]
     .sort((a, b) => b.pm25 - a.pm25)
     .slice(0, 3)
@@ -176,16 +147,6 @@ useEffect(() => {
       category: sensor.aqiCategory?.category || 'Unknown',
       color: sensor.aqiCategory?.color || '#000',
     }));
-
-  const timeDistribution = Array.from({ length: 24 }, (_, i) => {
-    const hour = i;
-    const hourLabel = `${hour}:00`;
-    const readingForHour = hourlyData.find(item => new Date(item.time).getHours() === hour);
-    return {
-      time: hourLabel,
-      pm25: readingForHour?.pm25 || 0,
-    };
-  });
 
   return (
     <div className="py-10">
@@ -203,10 +164,6 @@ useEffect(() => {
             value={`${formatPM25(stats.averagePM25)} µg/m³`}
             icon={<Wind className="h-5 w-5 text-primary" />}
             description="Mean value across all stations"
-            trend={{
-              value: Math.round((stats.averagePM25 - dailyAvg) / dailyAvg * 100),
-              isIncreasing: stats.averagePM25 > dailyAvg,
-            }}
           />
           <DataCard
             title="Maximum PM2.5"
@@ -277,23 +234,19 @@ useEffect(() => {
 
             <div className="mt-6">
               {lastUpdated && (
-  <p className="text-xs text-muted-foreground mb-2">
-    Graph last updated: {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-  </p>
-)}
+                <p className="text-xs text-muted-foreground mb-2">
+                  Graph last updated: {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              )}
 
-              {isChartLoading ? (
-  <Skeleton className="h-[280px] w-full" />
-) : (
-  <AQIChart
-    type="line"
-    timeRange={timeRange}
-    sensorId={selectedSensorId}
-    selectedMetric={selectedMetric}
-    height={280}
-  />
-)}
-
+              <AQIChart
+                type="line"
+                timeRange={timeRange}
+                sensorId={selectedSensorId}
+                selectedMetric={selectedMetric}
+                height={280}
+                onDataLoaded={() => setLastUpdated(new Date())}
+              />
             </div>
 
 

@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import axios from 'axios';
 import { formatPM25 } from '@/utils/aqiUtils';
-import { X } from 'lucide-react';
+import { X, LocateFixed } from 'lucide-react';
 import L from 'leaflet';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -19,15 +19,15 @@ L.Icon.Default.mergeOptions({
 const createColoredIcon = (color: string) => {
   return L.divIcon({
     className: 'custom-div-icon',
-    html: `<div style="background-color: ${color}; width: 42px; opacity: 0.8; height: 42px; border-radius: 50%; box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.7), 0 0 0 5px ${color}30; display: flex; align-items: center; justify-center;"></div>`,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
+    html: `<div style="background-color: ${color}; width: 42px; opacity: 0.8; height: 42px; border-radius: 50%; box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.7), 0 0 0 5px ${color}30; display: flex; align-items: center; justify-content: center;"></div>`,
+    iconSize: [42, 42], // Match the div size
+    iconAnchor: [21, 21], // Center the icon
   });
 };
 
 // Function to generate a random offset within ±range
 const getRandomOffset = (range: number): number => {
-  return (Math.random() * 2 - 1) * range; // Generates a random number between -range and +range
+  return (Math.random() * 2 - 1) * range;
 };
 
 // Component to fit bounds to cover all markers
@@ -36,60 +36,119 @@ const FitBounds = ({ sensors }: { sensors: any[] }) => {
 
   useEffect(() => {
     if (sensors.length > 0) {
-      // Extract all sensor coordinates
-      const bounds = sensors.map((sensor) => [
-        sensor.location.lat + getRandomOffset(0.001), // Randomized latitude
-        sensor.location.lng + getRandomOffset(0.001), // Randomized longitude
-      ]);
-
-      // Fit the map to the bounds
-      map.fitBounds(bounds as L.LatLngBoundsExpression, { padding: [50, 50] });
+      const bounds = L.latLngBounds(
+        sensors.map((sensor) => [
+          sensor.location.lat + getRandomOffset(0.0005),
+          sensor.location.lng + getRandomOffset(0.0005),
+        ])
+      );
+      if (bounds.isValid()) {
+        map.fitBounds(bounds, { padding: [50, 50] });
+      }
     }
   }, [map, sensors]);
 
   return null;
 };
 
+// Component for the Current Location Button
+const CurrentLocationButton = () => {
+  const map = useMap();
+  const [isLocating, setIsLocating] = useState(false);
+  const [userLocationMarker, setUserLocationMarker] = useState<L.Marker | null>(null);
+
+  const handleLocate = useCallback(() => {
+    setIsLocating(true);
+    map.locate().on('locationfound', (e: L.LocationEvent) => {
+      map.flyTo(e.latlng, 15);
+
+      if (userLocationMarker) {
+        userLocationMarker.remove();
+      }
+
+      const newUserMarker = L.marker(e.latlng, {
+        icon: L.divIcon({
+          className: 'user-location-icon',
+          html: `<div style="background-color: #3b82f6; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 0 2px #3b82f6;"></div>`,
+          iconSize: [22, 22], // Increased size for visibility with border
+          iconAnchor: [11, 11],
+        })
+      }).addTo(map).bindPopup("You are here!").openPopup();
+      setUserLocationMarker(newUserMarker);
+      setIsLocating(false);
+    }).on('locationerror', (err: L.ErrorEvent) => {
+      // Replace alert with a more user-friendly notification if possible in your app
+      console.error("Location error:", err.message);
+      alert("Could not access your location. Please ensure location services are enabled and permissions are granted in your browser.");
+      setIsLocating(false);
+    });
+  }, [map, userLocationMarker]);
+
+  return (
+    <button
+      onClick={handleLocate}
+      disabled={isLocating}
+      className="absolute top-4 right-4 z-[1000] bg-white p-2.5 rounded-lg shadow-lg hover:bg-gray-50 transition-colors disabled:opacity-60"
+      title="Show my location"
+      aria-label="Show my location"
+    >
+      {isLocating ? (
+        <svg className="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      ) : (
+        <LocateFixed className="h-5 w-5 text-gray-700" />
+      )}
+    </button>
+  );
+};
+
+
 const AQMap = () => {
   const [selectedSensor, setSelectedSensor] = useState<string | null>(null);
   const [sensors, setSensors] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  // FIX: State to hold the map instance
+  const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
 
-  // Fetch sensor data periodically
   useEffect(() => {
+    let isMounted = true;
     const fetchData = async () => {
+      if (!isMounted) return;
       try {
-        setIsLoading(true);
         const response = await axios.get("http://localhost:3001/api/sensors");
-        setSensors(response.data);
-        setIsLoading(false);
+        if (isMounted) {
+          setSensors(response.data);
+          setError(null);
+        }
       } catch (err) {
-        setError(err instanceof Error ? err : new Error('Failed to fetch sensor data'));
-        setIsLoading(false);
+        if (isMounted) {
+          setError(err instanceof Error ? err : new Error('Failed to fetch sensor data'));
+        }
+      } finally {
+        if (isMounted && isLoading) {
+          setIsLoading(false);
+        }
       }
     };
 
-    // Initial fetch
-    fetchData();
+    fetchData(); // Initial fetch
+    const intervalId = setInterval(fetchData, 60000); 
 
-    // Set up interval for periodic updates
-    const intervalId = setInterval(fetchData, 60000); // Refresh every minute
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
+  }, [isLoading]); // isLoading dependency to ensure initial fetch happens and setIsLoading(false) is called once.
 
-    return () => clearInterval(intervalId);
-  }, []);
-
-  // Get the selected sensor data
-  const selectedSensorData = selectedSensor 
-    ? sensors.find(s => s.id === selectedSensor) 
-    : null;
-
-  if (error) {
+  if (error && isLoading) {
     return (
-      <div className="relative w-full h-full rounded-xl shadow-sm overflow-hidden flex items-center justify-center">
-        <div className="text-center text-red-500">
-          <h2 className="text-xl font-semibold">Error loading map data</h2>
-          <p className="mt-2">{error.message}</p>
+      <div className="relative w-full h-full rounded-xl shadow-sm overflow-hidden flex items-center justify-center bg-gray-50">
+        <div className="text-center text-red-600 p-4 bg-red-100 rounded-lg">
+          <h2 className="text-lg font-semibold">Error loading map data</h2>
+          <p className="mt-1 text-sm">{error.message}</p>
         </div>
       </div>
     );
@@ -106,102 +165,103 @@ const AQMap = () => {
   return (
     <div className="relative w-full h-full rounded-xl shadow-sm overflow-hidden">
       <MapContainer 
-        center={[39.9612, -82.9988]} // Default center (will be overridden by FitBounds)
+        center={[39.9612, -82.9988]} 
         zoom={13} 
         style={{ height: '100%', width: '100%' }}
         className="z-0"
+        ref={(map) => setMapInstance(map)}
       >
-     <TileLayer
-  attribution='&copy; <a href="https://carto.com/">Carto</a>'
-  url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-/>
+        <TileLayer
+          attribution='&copy; <a href="https://carto.com/">Carto</a>'
+          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+        />
 
+        <CurrentLocationButton />
 
-        {/* Fit bounds to cover all markers */}
-        <FitBounds sensors={sensors} />
+        {sensors.length > 0 && <FitBounds sensors={sensors} />}
 
-        {/* Add markers for each sensor */}
         {sensors.map((sensor) => {
-          // Apply random offset to the sensor's position
-          const randomizedLat = sensor.location.lat + getRandomOffset(0.001);
-          const randomizedLng = sensor.location.lng + getRandomOffset(0.001);
+          const randomizedLat = sensor.location.lat + getRandomOffset(0.0005);
+          const randomizedLng = sensor.location.lng + getRandomOffset(0.0005);
           const position: [number, number] = [randomizedLat, randomizedLng];
 
           return (
             <Marker
               key={sensor.id}
               position={position}
-              icon={createColoredIcon(sensor.aqiCategory?.color || '#4ade80')}
+              icon={createColoredIcon(sensor.aqiCategory?.color || '#9ca3af')}
               eventHandlers={{
-  click: (e) => {
-    const map = e.target._map;
-    const marker = e.target;
-    setSelectedSensor(sensor.id);
+                click: (e) => {
+                  const map = e.target._map as L.Map; // e.target is the marker, _map is the map instance
+                  const marker = e.target as L.Marker;
+                  setSelectedSensor(sensor.id);
 
-    if (map.getZoom() < 15) {
-      map.flyTo(position, 15, { animate: true, duration: 0.5 });
-
-      map.once('moveend', () => {
-        marker.openPopup();
-      });
-    } else {
-      marker.openPopup();
-    }
-  },
-}}
-
+                  if (map.getZoom() < 15) {
+                    map.flyTo(marker.getLatLng(), 15, { animate: true, duration: 0.5 });
+                    map.once('zoomend moveend', () => { 
+                       if (marker.getPopup() && !marker.isPopupOpen()) marker.openPopup();
+                    });
+                  } else {
+                     if (marker.getPopup() && !marker.isPopupOpen()) marker.openPopup();
+                  }
+                },
+              }}
             >
               <Popup>
-                <div className="p-1">
+                <div className="p-1 w-56"> {/* Increased width slightly for better spacing */}
                   <button 
-                    className="absolute top-1 right-1 text-gray-400 hover:text-gray-600"
-                    onClick={(e) => {
-                      e.stopPropagation();
+                    className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 transition-colors z-[1]" // Ensure button is clickable
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      // FIX: Use the stored mapInstance to close the popup
+                      if (mapInstance) {
+                        mapInstance.closePopup();
+                      }
                       setSelectedSensor(null);
                     }}
+                    aria-label="Close popup"
                   >
-                    <X className="h-3 w-3" />
+                    <X className="h-4 w-4" />
                   </button>
 
-                  <div className="font-medium text-sm">{sensor.name}</div>
+                  <div className="font-semibold text-base mb-1 pr-5">{sensor.name}</div>
 
                   <div 
-                    className="text-xs inline-block px-2 py-0.5 rounded-full my-1 font-medium"
+                    className="text-xs inline-block px-2 py-1 rounded-full my-1.5 font-medium"
                     style={{ 
-                      backgroundColor: `${sensor.aqiCategory?.color}20`,
-                      color: sensor.aqiCategory?.color
+                      backgroundColor: `${sensor.aqiCategory?.color || '#e5e7eb'}33`,
+                      color: sensor.aqiCategory?.color || '#4b5563'
                     }}
                   >
-                    {sensor.aqiCategory?.category}
+                    {sensor.aqiCategory?.category || 'N/A'}
                   </div>
 
-                  <div className="space-y-1 text-xs">
+                  <div className="space-y-1.5 text-xs mt-2">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">PM2.5:</span>
-                      <span className="font-medium">{formatPM25(sensor.pm25)} µg/m³</span>
+                      <span className="text-gray-600">PM2.5:</span>
+                      <span className="font-semibold">{formatPM25(sensor.pm25)} µg/m³</span>
                     </div>
 
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Temperature:</span>
-                      <span className="font-medium">{sensor.temperature.toFixed(1)} °C</span>
+                      <span className="text-gray-600">Temperature:</span>
+                      <span className="font-semibold">{sensor.temperature?.toFixed(1) ?? 'N/A'} °C</span>
                     </div>
 
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Humidity:</span>
-                      <span className="font-medium">{sensor.humidity.toFixed(0)}%</span>
+                      <span className="text-gray-600">Humidity:</span>
+                      <span className="font-semibold">{sensor.humidity?.toFixed(0) ?? 'N/A'}%</span>
                     </div>
-
-                    {/* Add Last Recorded Date and Time */}
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Last Updated:</span>
-                      <span className="font-medium">
-                        {new Date(sensor.lastUpdated).toLocaleString([], {
-                          year: 'numeric',
+                    
+                    <div className="flex justify-between pt-1 border-t border-gray-200 mt-1.5">
+                      <span className="text-gray-500 text-xs">Last Updated:</span>
+                      <span className="font-medium text-xs">
+                        {sensor.lastUpdated ? new Date(sensor.lastUpdated).toLocaleString([], {
+                          year: '2-digit',
                           month: 'short',
                           day: 'numeric',
-                          hour: '2-digit',
+                          hour: 'numeric',
                           minute: '2-digit',
-                        })}
+                        }) : 'N/A'}
                       </span>
                     </div>
                   </div>
@@ -212,21 +272,23 @@ const AQMap = () => {
         })}
       </MapContainer>
 
-      {/* Map Legend */}
-      <div className="absolute bottom-4 right-4 bg-white/80 backdrop-blur-sm px-4 py-3 rounded-lg text-sm z-10">
-        <div className="flex flex-wrap gap-2 md:gap-4">
+      <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md px-3 py-2.5 rounded-lg shadow-md text-xs z-[1000]">
+        <div className="font-medium mb-1.5 text-gray-700">AQI Legend</div>
+        <div className="flex flex-col space-y-1">
           {[
             { label: 'Good', color: '#4ade80' },
             { label: 'Moderate', color: '#facc15' },
-            { label: 'Unhealthy', color: '#f87171' },
-            { label: 'Hazardous', color: '#ef4444' },
+            { label: 'Unhealthy for Sensitive', color: '#f97316' },
+            { label: 'Unhealthy', color: '#ef4444' },
+            { label: 'Very Unhealthy', color: '#8b5cf6' },
+            { label: 'Hazardous', color: '#7f1d1d' },
           ].map((item) => (
-            <div key={item.label} className="flex items-center gap-1.5">
+            <div key={item.label} className="flex items-center gap-2">
               <div 
-                className="w-3 h-3 rounded-full" 
+                className="w-3 h-3 rounded-full border border-gray-300" 
                 style={{ backgroundColor: item.color }}
               />
-              <span>{item.label}</span>
+              <span className="text-gray-600">{item.label}</span>
             </div>
           ))}
         </div>

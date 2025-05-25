@@ -22,6 +22,7 @@ interface AQIChartProps {
   sensorId?: string;
   selectedMetric?: string;
   height?: number;
+  onDataLoaded?: () => void;
 }
 
 const metricAliasMap: Record<string, string> = {
@@ -35,6 +36,7 @@ const AQIChart: React.FC<AQIChartProps> = ({
   sensorId,
   height = 300,
   selectedMetric,
+  onDataLoaded,
 }) => {
   const dataKey = metricAliasMap[selectedMetric!] || selectedMetric!;
   const [chartData, setChartData] = useState<any[]>([]);
@@ -86,6 +88,7 @@ const AQIChart: React.FC<AQIChartProps> = ({
           // Fetch historical data from /api/historical
           const response = await axios.get('http://localhost:3001/api/historical', {
             params: { 
+              time_range: timeRange,
               sensor_id: sensorId,
               metric: backendField,
             },
@@ -119,7 +122,9 @@ const AQIChart: React.FC<AQIChartProps> = ({
         }
 
         setChartData(responseData);
+        onDataLoaded?.();
         setError(null);
+        
       } catch (err) {
         console.error("Error fetching chart data:", err);
         setError(`Failed to load chart data for ${selectedMetric}.`);

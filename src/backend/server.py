@@ -18,6 +18,7 @@ from tenacity import (
     stop_after_delay,
     wait_exponential,
     retry_if_exception_type,
+    stop_after_attempt,
 )
 
 # ----------------------------------------
@@ -49,13 +50,10 @@ DATA_VAL_DICT = {
 
 INVERSE_DATA_VAL_DICT = {v: k for k, v in DATA_VAL_DICT.items()}
 
-NUM_DAILY_POINTS_TO_RETURN = 35
-CHUNK_DURATION_DAYS = 7
-CHUNK_DURATION_HOURS = CHUNK_DURATION_DAYS * 24
 
 # Adjust these retry parameters as you like
 @retry(
-    stop=stop_after_delay(30),              # give up after 30s
+    stop=stop_after_attempt(1),              # give up after 30s
     wait=wait_exponential(multiplier=1, min=1, max=10),
     retry=(
         retry_if_exception_type(httpx.RequestError) |
@@ -271,74 +269,6 @@ def generate_sensors(sensor_json: dict) -> List[Sensor]:
     # print(sensors)
     return sensors
 
-# def generate_historical_data(days: int = 7, points_per_day: int = 24, baseline_pm25: float = 15) -> List[HistoricalDataPoint]:
-#     now = datetime.now()
-#     data_points = []
-#     for day in range(days):
-#         for point in range(points_per_day):
-#             timestamp = now - timedelta(days=day)
-#             hour = int((24 * point) / points_per_day)
-#             timestamp = timestamp.replace(hour=hour, minute=0, second=0, microsecond=0)
-            
-#             pm25_factor = 1.0
-#             if (7 <= hour <= 9) or (16 <= hour <= 19):
-#                 pm25_factor = 1.5 + random.random() * 0.5
-#             elif hour >= 22 or hour <= 5:
-#                 pm25_factor = 0.7 + random.random() * 0.3
-            
-#             day_of_week = (now.weekday() - day) % 7
-#             if day_of_week in (5, 6):
-#                 pm25_factor *= 0.85
-            
-#             random_factor = 0.8 + random.random() * 0.4
-#             pm25_value = baseline_pm25 * pm25_factor * random_factor
-            
-#             temperature = 20 + 10 * math.sin((math.pi * hour) / 12) + random_in_range(-2, 2)
-#             humidity = 50 + 15 * math.cos((math.pi * hour) / 12) + random_in_range(-5, 5)
-            
-#             data_points.append(HistoricalDataPoint(
-#                 timestamp=timestamp,
-#                 pm25=pm25_value,
-#                 temperature=temperature,
-#                 humidity=humidity
-#             ))
-#     # print(data_points)
-#     data_points.sort(key=lambda x: x.timestamp)
-#     return data_points
-    
-
-
-# def generate_historical_data(sensor_id, field) -> List[Dict]:
-#     days = 9
-#     # Start at midnight (UTC) `days-1` ago:
-#     start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days-1)
-#     metric_key = INVERSE_DATA_VAL_DICT.get(field)
-#     if metric_key is None:
-#         raise ValueError(f"No matching key found in DATA_VAL_DICT for field: {field}")
-
-#     result = []
-#     for day_offset in range(days):
-#         day = start + timedelta(days=day_offset)
-#         # Format the datetime in ISO format with 'Z' suffix
-#         formatted_time = day.strftime("%Y-%m-%dT%H:%M:%S.000Z")
-
-#         # 1. PM2.5 daily average via your existing generator
-#         pm_records = generate_24hour_data(formatted_time, field, sensor_id)
-#         # print(pm_records)
-
-#         valid_values = [r.get(metric_key) for r in pm_records if r.get(metric_key) is not None]
-#         print("valid_values: ", valid_values)
-#         avg_value = sum(valid_values) / len(valid_values) if valid_values else None
-#         print("avg_value: ", avg_value)
-
-
-#         result.append({
-#             "timestamp": day.strftime("%Y-%m-%dT00:00:00"),
-#             metric_key : round(avg_value, 4),
-#         })
-
-#     return result
-
 async def _fetch_chunk_async(
     client: httpx.AsyncClient,
     sensor_id: str,
@@ -357,8 +287,14 @@ async def _fetch_chunk_async(
         f"&rangehours={range_hours}"
         f"&time={end_time_iso}"
     )
-    resp = await client.get(url, timeout=httpx.Timeout(10.0, read=60.0))
-    resp.raise_for_status()
+    print("url: ", url)
+    print("fetch attempt for:", end_time_iso)
+    try:
+        resp = await client.get(url, timeout=httpx.Timeout(10.0, read=60.0))
+        resp.raise_for_status()
+    except Exception as e:
+        print("  ↳ fetch failed:", repr(e))
+        raise
     data = resp.json()
     data.pop("sensor", None)
     # ensure shape
@@ -368,64 +304,97 @@ async def _fetch_chunk_async(
     }
 
 
+import asyncio
+from datetime import datetime, timedelta, timezone
+from collections import defaultdict
+from typing import List, Dict, Optional, Any
+
+import httpx
+from tenacity import retry, stop_after_delay, wait_exponential, retry_if_exception_type
+
+# your existing retry‐decorated fetch_chunk_async here…
+
 async def generate_historical_data(
-    sensor_id: str, api_field: str
+    sensor_id: str,
+    api_field: str,
+    time_range: str
 ) -> List[Dict[str, Optional[float]]]:
+    # 1️⃣ configure span
+    if time_range == "7d":
+        days_to_return = 7
+    else:  # "30d" or anything else
+        days_to_return = 35
+
+    chunk_days  = 7
+    chunk_hours = chunk_days * 24
+
+    # map api_field → output key
     output_key = INVERSE_DATA_VAL_DICT.get(api_field)
     if output_key is None:
         raise ValueError(f"No matching output key for API field: {api_field}")
 
-    now_utc = datetime.now(timezone.utc)
-    # prepare all 7-day-chunk end times
+    # 2️⃣ build list of chunk end‐times
+    now = datetime.now(timezone.utc)
+    num_chunks = (days_to_return + chunk_days - 1) // chunk_days
     end_times = [
-        (now_utc - timedelta(days=i * CHUNK_DURATION_DAYS))
+        (now - timedelta(days=i * chunk_days))
         .strftime("%Y-%m-%dT%H:%M:%S.000Z")
-        for i in range((NUM_DAILY_POINTS_TO_RETURN + CHUNK_DURATION_DAYS - 1) // CHUNK_DURATION_DAYS)
+        for i in range(num_chunks)
     ]
 
-    daily_sum = defaultdict(float)
+    # 3️⃣ fetch all chunks in parallel
+    async with httpx.AsyncClient() as client:
+        tasks = [
+            _fetch_chunk_async(client, sensor_id, api_field, et, chunk_hours)
+            for et in end_times
+        ]
+        chunks: List[Dict[str, Any]] = await asyncio.gather(*tasks)
+
+    # 4️⃣ aggregate: raw → hourly buckets → daily buckets
+    daily_sum   = defaultdict(float)
     daily_count = defaultdict(int)
 
-    async with httpx.AsyncClient() as client:
-        # schedule all fetches concurrently
-        tasks = [
-            _fetch_chunk_async(client, sensor_id, api_field, end_time_iso, CHUNK_DURATION_HOURS)
-            for end_time_iso in end_times
-        ]
-        # gather results (will raise if unrecoverable after retries)
-        chunks = await asyncio.gather(*tasks, return_exceptions=False)
-
-    # aggregate each chunk
     for chunk in chunks:
+        # first pass: bucket into hours
+        hourly_sum   = defaultdict(float)
+        hourly_count = defaultdict(int)
+
         for ts_str, val_str in zip(chunk["time"], chunk["value"]):
             try:
-                dt = (
-                    datetime.fromisoformat(str(ts_str).rstrip("Z"))
-                    .replace(tzinfo=timezone.utc)
-                )
-                date_key = dt.date()
-                val = float(val_str)
-                daily_sum[date_key] += val
-                daily_count[date_key] += 1
+                dt = datetime.fromisoformat(ts_str.rstrip("Z")).replace(tzinfo=timezone.utc)
+                hour_bucket = dt.replace(minute=0, second=0, microsecond=0)
+                hourly_sum[hour_bucket]   += float(val_str)
+                hourly_count[hour_bucket] += 1
             except Exception:
                 continue
 
-    # build final 35-day list
+        # second pass: collapse each hourly bucket into the day's tally
+        for hour_dt, total in hourly_sum.items():
+            count = hourly_count[hour_dt]
+            if count == 0:
+                continue
+            hourly_avg = total / count
+            day_key = hour_dt.date()
+            daily_sum[day_key]   += hourly_avg
+            daily_count[day_key] += 1
+
+    # 5️⃣ build the final list, one entry per day (fills in missing days with None)
     result: List[Dict[str, Optional[float]]] = []
-    for offset in range(NUM_DAILY_POINTS_TO_RETURN - 1, -1, -1):
-        d = (now_utc - timedelta(days=offset)).date()
-        avg = (
-            round(daily_sum[d] / daily_count[d], 4)
-            if daily_count[d] > 0
-            else None
-        )
-        ts = datetime(d.year, d.month, d.day, tzinfo=timezone.utc)
+    for offset in range(days_to_return - 1, -1, -1):
+        day = (now - timedelta(days=offset)).date()
+        if daily_count[day]:
+            day_avg = round(daily_sum[day] / daily_count[day], 4)
+        else:
+            day_avg = None
+
+        ts_midnight = datetime(day.year, day.month, day.day, tzinfo=timezone.utc)
         result.append({
-            "timestamp": ts.strftime("%Y-%m-%dT00:00:00"),
-            output_key: avg
+            "timestamp": ts_midnight.strftime("%Y-%m-%dT00:00:00"),
+            output_key: day_avg
         })
 
     return result
+
 
 def generate_24hour_data(time, field, sensor_id) -> List[HourlyDataPoint]:
     raw = transform_data_from_url(sensor_id, field, time, 24)
@@ -556,13 +525,11 @@ def get_sensors():
 
 
 
-@app.get(
-    "/api/historical",
-    response_model=List[HistoricalDataPoint]
-)
+@app.get("/api/historical")
 async def get_historical(
     sensor_id: Optional[str] = Query(None),
     metric:    Optional[str] = Query(None),
+    time_range: Optional[str] = Query(None),
 ):
     # default sensor
     if not sensor_id:
@@ -579,7 +546,7 @@ async def get_historical(
         return []
 
     # **await** your async function here
-    return await generate_historical_data(sensor_id, backend_field)
+    return await generate_historical_data(sensor_id, backend_field, time_range)
 
 
 
