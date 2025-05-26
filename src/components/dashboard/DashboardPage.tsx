@@ -12,7 +12,9 @@ import DataTable from './DataTable';
 import DataCard from '@/components/ui/DataCard';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
+
+
 
 
 const DashboardPage = () => {
@@ -23,6 +25,8 @@ const DashboardPage = () => {
   };
 
   //Fetches sensor names for the dropdown for the AQIChart
+  const [searchParams] = useSearchParams();
+const sensorIdFromQuery = searchParams.get('sensorId');
   const [sensors, setSensors] = useState<SensorInfo[]>([]);
   const [selectedSensorId, setSelectedSensorId] = useState<string>('');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -38,25 +42,26 @@ const DashboardPage = () => {
 
 
 
-  useEffect(() => {
-    const fetchSensorNames = async () => {
-      try {
-        const response = await axios.get('http://localhost:3001/api/sensors');
-        const sensors: SensorInfo[] = response.data.map((sensor: any) => ({
-          id: sensor.id,
-          name: sensor.name,
-        }));
-        setSensors(sensors);
-        if (sensors.length > 0) {
-          setSelectedSensorId(sensors[0].id); // Set initial selection by ID
-        }
-      } catch (error) {
-        console.error('Failed to fetch sensor names:', error);
+useEffect(() => {
+  const fetchSensorNames = async () => {
+    try {
+      const response = await axios.get('http://localhost:3001/api/sensors');
+      const sensors: SensorInfo[] = response.data.map((sensor: any) => ({
+        id: sensor.id,
+        name: sensor.name,
+      }));
+      setSensors(sensors);
+      if (sensors.length > 0) {
+        setSelectedSensorId(sensorIdFromQuery || sensors[0].id);
       }
-    };
+    } catch (error) {
+      console.error('Failed to fetch sensor names:', error);
+    }
+  };
 
-    fetchSensorNames();
-  }, []);
+  fetchSensorNames();
+}, [sensorIdFromQuery]);
+
 
 
   //Allows routing to specific parts of this page using id hashing

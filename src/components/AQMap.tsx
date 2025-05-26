@@ -6,6 +6,8 @@ import { formatPM25 } from '@/utils/aqiUtils';
 import { X, LocateFixed } from 'lucide-react';
 import L from 'leaflet';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useNavigate } from 'react-router-dom';
+
 
 // Fix for default marker icons in Leaflet with React
 (L.Icon.Default.prototype as any)._getIconUrl = undefined;
@@ -14,6 +16,8 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
+
+
 
 // Create custom colored markers for different AQI levels
 const createColoredIcon = (color: string) => {
@@ -106,6 +110,7 @@ const CurrentLocationButton = () => {
 
 
 const AQMap = () => {
+  const navigate = useNavigate(); 
   const [selectedSensor, setSelectedSensor] = useState<string | null>(null);
   const [sensors, setSensors] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -266,6 +271,16 @@ const AQMap = () => {
                     </div>
                   </div>
                 </div>
+                 <button
+  className="mt-3 w-full text-center bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1.5 rounded-md transition-all"
+  onClick={(e) => {
+    e.stopPropagation();
+    navigate(`/dashboard?sensorId=${sensor.id}`);
+  }}
+>
+  View Details
+</button>
+
               </Popup>
             </Marker>
           );
