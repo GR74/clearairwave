@@ -261,7 +261,7 @@ const AQMap = () => {
                       <span className="text-gray-500 text-xs">Last Updated:</span>
                       <span className="font-medium text-xs">
                         {sensor.lastUpdated ? new Date(sensor.lastUpdated).toLocaleString([], {
-                          year: '2-digit',
+                          year: 'numeric',
                           month: 'short',
                           day: 'numeric',
                           hour: 'numeric',
