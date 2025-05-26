@@ -17,7 +17,7 @@ const HeroSection = () => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const response = await axios.get("http://localhost:3001/api/sensors");
+        const response = await axios.get("https://clearairwave.onrender.com/api/sensors");
         setRealSensors(response.data); // Set real sensor data
         setIsLoading(false);
       } catch (err) {
