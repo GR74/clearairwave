@@ -51,63 +51,69 @@ const Contact = () => {
         </div>
       </section>
 
-      {/* Contact Form Section */}
-      <section className="bg-gradient-to-b from-white to-blue-50 px-6 md:px-20 py-16">
-        <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 items-start">
-          {/* Left side: Title & paragraph */}
-          <div className="text-left">
-            <h2 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-blue-500 to-blue-700 bg-clip-text text-transparent mb-4">
-              Contact Us!
-            </h2>
-            <p className="text-muted-foreground text-base max-w-md">
-              Fill out the form and we’ll get back to you as soon as possible.
-              Whether you're reporting a bug or sharing an idea, we value your input!
-            </p>
-          </div>
+  {/* Contact Form Section */}
+<section className="bg-gradient-to-b from-white to-blue-100 px-6 md:px-20 py-20">
+  <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-14 items-start">
 
-          {/* Right side: Contact Form */}
-          <form
-            action="https://formspree.io/f/your_form_id"
-            method="POST"
-            className="bg-white p-8 rounded-xl shadow-lg border border-blue-200 space-y-6 w-full"
-          >
-            <div className="grid md:grid-cols-2 gap-4">
-              <input
-                type="text"
-                name="First Name"
-                required
-                placeholder="First Name"
-                className="p-3 border border-gray-300 rounded-md w-full focus:ring-2 focus:ring-blue-500 outline-none"
-              />
-              <input
-                type="text"
-                name="Last Name"
-                placeholder="Last Name"
-                className="p-3 border border-gray-300 rounded-md w-full focus:ring-2 focus:ring-blue-500 outline-none"
-              />
-            </div>
-            <input
-              type="email"
-              name="Email"
-              required
-              placeholder="Email Address"
-              className="p-3 border border-gray-300 rounded-md w-full focus:ring-2 focus:ring-blue-500 outline-none"
-            />
-            <textarea
-              name="Message"
-              required
-              placeholder="Your message..."
-              className="p-3 border border-gray-300 rounded-md w-full h-40 focus:ring-2 focus:ring-blue-500 outline-none"
-            />
-            <button
-              type="submit"
-              className="w-full bg-blue-600 text-white font-semibold py-3 rounded-md hover:bg-blue-700 transition"
-            >
-              Submit
-            </button>
-          </form>
-        </div>
-      </section>
+    {/* Left Column */}
+    <div className="text-left">
+      <h2 className="text-4xl font-extrabold tracking-tight bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent mb-4">
+        Contact Us
+      </h2>
+      <p className="text-base text-gray-700 max-w-md leading-relaxed">
+        Reach out with your ideas, feedback, or issues. We're excited to hear from you and improve ClearSkies together.
+      </p>
+    </div>
+
+    {/* Right Column: Soft Blue Morphic Form */}
+    <form
+      action="https://formspree.io/f/your_form_id"
+      method="POST"
+      className="relative z-10 bg-gradient-to-br from-blue-100 via-blue-50 to-white/80 backdrop-blur-xl border border-white/40 shadow-[0_8px_40px_rgba(0,0,0,0.1)] rounded-3xl px-10 py-10 space-y-6 w-full transition hover:shadow-[0_10px_60px_rgba(0,0,0,0.15)]"
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-white/40 via-white/20 to-white/10 rounded-3xl pointer-events-none" />
+
+      <div className="grid md:grid-cols-2 gap-4 relative z-10">
+        <input
+          type="text"
+          name="First Name"
+          required
+          placeholder="First Name"
+          className="p-4 bg-white/60 border border-white/50 rounded-lg w-full text-sm text-gray-800 placeholder-gray-500 shadow-inner backdrop-blur focus:ring-2 focus:ring-blue-300 focus:outline-none"
+        />
+        <input
+          type="text"
+          name="Last Name"
+          placeholder="Last Name"
+          className="p-4 bg-white/60 border border-white/50 rounded-lg w-full text-sm text-gray-800 placeholder-gray-500 shadow-inner backdrop-blur focus:ring-2 focus:ring-blue-300 focus:outline-none"
+        />
+      </div>
+
+      <input
+        type="email"
+        name="Email"
+        required
+        placeholder="Email Address"
+        className="p-4 bg-white/60 border border-white/50 rounded-lg w-full text-sm text-gray-800 placeholder-gray-500 shadow-inner backdrop-blur focus:ring-2 focus:ring-blue-300 focus:outline-none"
+      />
+
+      <textarea
+        name="Message"
+        required
+        placeholder="Your message..."
+        className="p-4 bg-white/60 border border-white/50 rounded-lg w-full h-36 text-sm text-gray-800 placeholder-gray-500 resize-none shadow-inner backdrop-blur focus:ring-2 focus:ring-blue-300 focus:outline-none"
+      />
+
+      <button
+        type="submit"
+        className="w-full bg-gradient-to-r from-blue-500 to-cyan-400 hover:from-blue-600 hover:to-cyan-500 text-white font-semibold py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+      >
+        Submit
+      </button>
+    </form>
+  </div>
+</section>
+
     </>
   );
 };

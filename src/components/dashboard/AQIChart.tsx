@@ -333,6 +333,12 @@ if (showLoadingOrNoData) {
           />
         </LineChart>
       </ResponsiveContainer>
+      <p className="text-xs text-gray-400 mt-2 text-center">
+  {timeRange === '24h'
+    ? 'Values shown are hourly averages.'
+    : 'Values shown are daily averages.'}
+    </p>
+
     </div>
   );
 };
