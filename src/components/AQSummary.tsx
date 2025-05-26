@@ -65,20 +65,38 @@ const AQSummary = () => {
   const stats = calculateStatistics(realSensors);
   const currentAvgPM25 = stats.averagePM25;
   const avgAQICategory = getAQICategory(currentAvgPM25);
-
-  // Check trend by comparing with 3 hours ago
-  const threeHoursAgo = hourlyData[hourlyData.length - 4]?.pm25 || currentAvgPM25;
-  const isImproving = currentAvgPM25 < threeHoursAgo;
-  const changePercent = Math.round(Math.abs(currentAvgPM25 - threeHoursAgo) / threeHoursAgo * 100);
-
   const healthRecommendation = getHealthRecommendations(avgAQICategory.category);
+
+
+  let current = null;
+let threeHoursAgo = null;
+let changePercent: string | number = '0.0';
+let isImproving = false;
+
+const pm25Values = hourlyData
+  .map((entry: any) => entry["pm2.5"])
+  .filter((v: any) => typeof v === "number");
+
+if (pm25Values.length >= 4) {
+  current = pm25Values[pm25Values.length - 1];
+  threeHoursAgo = pm25Values[pm25Values.length - 4];
+
+  if (threeHoursAgo !== 0) {
+    const percent = ((current - threeHoursAgo) / threeHoursAgo) * 100;
+    changePercent = percent.toFixed(1);
+    isImproving = percent < 0;
+  }
+}
+
+
+
 
   return (
     <section className="py-16 bg-gradient-to-b from-white to-blue-50">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-8">
           <div className="flex-1 space-y-6 max-w-xl">
-            <h2 className="text-3xl font-semibold tracking-tight">Current Air Quality Status</h2>
+            <h2 className="text-3xl font-semibold tracking-tight">Current Average Air Quality Status</h2>
 
             <div className="flex items-start gap-4">
               <div>
