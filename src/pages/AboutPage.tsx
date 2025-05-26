@@ -13,19 +13,19 @@ const developers: Developer[] = [
   {
     name: "Aniket Chaudhari",
     role: "Backend Developer & Server Systems Engineer",
-    img: "src/images/IMG_3962.jpeg",
+    img: "public/images/IMG_3962.jpeg",
     linkedin: "https://www.linkedin.com/in/aniket-chaudhari-12238833a/",
   },
   {
     name: "Gowrish Rajagopal",
     role: "Lead System Architect & Integration Engineer",
-    img: "src/images/IMG_5048.jpeg",
+    img: "public/images/IMG_5048.jpeg",
     linkedin: "https://www.linkedin.com/in/gowrishrajagopal/",
   },
   {
     name: "Yasharth Pandey",
     role: "Frontend Developer & UI Engineer",
-    img: "src/images/IMG_9273.jpeg",
+    img: "public/images/IMG_9273.jpeg",
     linkedin: "https://www.linkedin.com/in/yasharth-pandey/",
   },
 ];
@@ -41,7 +41,7 @@ const AboutPage: React.FC = () => {
         <div className="md:w-1/2">
           <div className = "w-full">
             <img
-            src="src/images/lickinggg.jpg"
+            src="public/images/lickinggg.jpg"
             alt="Community Sensor"
             className="rounded-2xl w-full max-w-[600px] max-h-[400px] object-contain"
           />
@@ -89,7 +89,7 @@ This project is a community-driven initiative to monitor and improve air quality
         <div className="md:w-1/2">
             <div className = "w-full">
             <img
-                src="src/images/sensor for now.jpg"
+                src="public/images/sensor for now.jpg"
                 alt="SimpleAQ Device"
                 className=" rounded-2xl w-full max-w-[600px] max-h-[400px] object-contain"
             />
