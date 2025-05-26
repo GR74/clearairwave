@@ -18,8 +18,8 @@ const AQSummary = () => {
       try {
         setIsLoading(true);
         const [sensorResponse, hourlyResponse] = await Promise.all([
-          axios.get("https://clearairwave.onrender.com/sensors"),
-          axios.get("https://clearairwave.onrender.com/hourly"),
+          axios.get("https://clearairwave.onrender.com/api/sensors"),
+          axios.get("https://clearairwave.onrender.com/api/hourly"),
         ]);
         setRealSensors(sensorResponse.data);
         setHourlyData(hourlyResponse.data);
