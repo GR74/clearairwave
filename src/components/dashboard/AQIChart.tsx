@@ -210,22 +210,35 @@ const AQIChart: React.FC<AQIChartProps> = ({
   // Condition for loading or no data
   const showLoadingOrNoData = (loading && !data) || (!loading && finalData.length === 0 && !error && sensorId);
 
-  if (showLoadingOrNoData) {
-    return (
-      <div className="w-full h-[300px] flex flex-col items-center justify-center animate-fade-in">
-        <div className="relative w-16 h-16 mb-4">
-          <div className="absolute inset-0 rounded-full border-[6px] border-t-transparent border-l-transparent border-blue-500 animate-spin-slow blur-sm opacity-100 shadow-[0_0_20px_#3b82f6]" />
-          <div className="absolute inset-1 rounded-full border-[4px] border-r-transparent border-b-transparent border-sky-400 animate-spin-reverse blur-sm opacity-100" />
-<div className="absolute inset-0 flex items-center justify-center">
-  <div className="w-3 h-3 rounded-full bg-blue-600 animate-ping-slow shadow-md" />
-</div>
+if (showLoadingOrNoData) {
+  return (
+    <div className="w-full h-[300px] flex flex-col items-center justify-center animate-fade-in">
+      <div className="relative w-16 h-16 mb-4">
+        {/* Outer glowing halo spinner */}
+        <div className="absolute inset-0 rounded-full border-[6px] border-t-transparent border-l-transparent border-blue-500 animate-spin-slow blur-sm opacity-80 shadow-[0_0_30px_rgba(59,130,246,0.4)]" />
+
+        {/* Mid ring - counter-rotating blur ring */}
+        <div className="absolute inset-1 rounded-full border-[4px] border-r-transparent border-b-transparent border-sky-400 animate-spin-reverse blur-[2px] opacity-90 shadow-[0_0_12px_rgba(56,189,248,0.5)]" />
+
+        {/* Inner aura ring */}
+        <div className="absolute inset-[6px] rounded-full border-[2px] border-blue-300/20 animate-pulse-slow" />
+
+        {/* Center pulse dot */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="relative w-3.5 h-3.5 rounded-full bg-blue-600 shadow-[0_0_10px_rgba(59,130,246,0.6)]">
+            <div className="absolute inset-0 rounded-full bg-blue-400 opacity-50 animate-ping-fast blur-[2px]" />
+          </div>
         </div>
-        <p className="text-sm text-center text-gray-500 animate-pulse-slow tracking-wide">
-          {loading ? `Fetching ${selectedMetric || 'air quality'} data...` : `No data available for ${selectedMetric || 'the selected metric'}.`}
-        </p>
       </div>
-    );
-  }
+
+      <p className="text-sm text-center text-gray-500 animate-pulse-slow tracking-wide">
+        {loading
+          ? `Fetching ${selectedMetric || 'air quality'} data...`
+          : `No data available for ${selectedMetric || 'the selected metric'}.`}
+      </p>
+    </div>
+  );
+}
 
   if (error) {
     return (

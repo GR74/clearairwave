@@ -118,10 +118,16 @@ export default {
   from: { transform: 'rotate(360deg)' },
   to: { transform: 'rotate(0deg)' },
 },
+'ping-fast': {
+  '0%': { transform: 'scale(1)', opacity: '1' },
+  '75%, 100%': { transform: 'scale(1.7)', opacity: '0' },
+},
 'ping-slow': {
   '0%': { transform: 'scale(1)', opacity: '1' },
   '75%, 100%': { transform: 'scale(1.5)', opacity: '0' },
+  
 },
+
 
 			},
 			animation: {
@@ -136,6 +142,8 @@ export default {
 				'spin-slow': 'spin 3s linear infinite',
 				'spin-reverse': 'spin-reverse 4s linear infinite',
 				'ping-slow': 'ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite',
+				'ping-fast': 'ping-fast 1s cubic-bezier(0, 0, 0.2, 1) infinite',
+
 
 			},
 			backdropFilter: {
