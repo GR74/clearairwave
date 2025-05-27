@@ -102,28 +102,60 @@ const CurrentLocationButton = () => {
 
   const handleLocate = useCallback(() => {
     setIsLocating(true);
-    map.locate().on('locationfound', (e: L.LocationEvent) => {
-      map.flyTo(e.latlng, 15);
-
-      if (userLocationMarker) {
-        userLocationMarker.remove();
-      }
-
-      const newUserMarker = L.marker(e.latlng, {
-        icon: L.divIcon({
-          className: 'user-location-icon',
-          html: `<div style="background-color: #3b82f6; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 0 2px #3b82f6;"></div>`,
-          iconSize: [22, 22],
-          iconAnchor: [11, 11],
-        })
-      }).addTo(map).bindPopup("You are here!").openPopup();
-      setUserLocationMarker(newUserMarker);
+    
+    // First check if geolocation is supported
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
       setIsLocating(false);
-    }).on('locationerror', (err: L.ErrorEvent) => {
-      console.error("Location error:", err.message);
-      alert("Could not access your location. Please ensure location services are enabled and permissions are granted in your browser.");
-      setIsLocating(false);
-    });
+      return;
+    }
+
+    // Request high accuracy position
+    const options = {
+      enableHighAccuracy: true,
+      timeout: 5000,
+      maximumAge: 0
+    };
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const latlng = L.latLng(latitude, longitude);
+        map.flyTo(latlng, 15);
+
+        if (userLocationMarker) {
+          userLocationMarker.remove();
+        }
+
+        const newUserMarker = L.marker(latlng, {
+          icon: L.divIcon({
+            className: 'user-location-icon',
+            html: `<div style="background-color: #3b82f6; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 0 2px #3b82f6;"></div>`,
+            iconSize: [22, 22],
+            iconAnchor: [11, 11],
+          })
+        }).addTo(map).bindPopup("You are here!").openPopup();
+        setUserLocationMarker(newUserMarker);
+        setIsLocating(false);
+      },
+      (error) => {
+        let errorMessage = "Could not access your location.";
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = "Location permission denied. Please enable location services in your browser settings.";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information is unavailable.";
+            break;
+          case error.TIMEOUT:
+            errorMessage = "Location request timed out.";
+            break;
+        }
+        alert(errorMessage);
+        setIsLocating(false);
+      },
+      options
+    );
   }, [map, userLocationMarker]);
 
   return (
@@ -147,7 +179,7 @@ const CurrentLocationButton = () => {
 };
 
 const AQMap = () => {
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
   const [selectedSensor, setSelectedSensor] = useState<string | null>(null);
   const [sensors, setSensors] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -175,8 +207,8 @@ const AQMap = () => {
       }
     };
 
-    fetchData();
-    const intervalId = setInterval(fetchData, 60000); 
+    fetchData(); // Initial fetch
+    const intervalId = setInterval(fetchData, 60000);
 
     return () => {
       isMounted = false;
@@ -205,9 +237,9 @@ const AQMap = () => {
 
   return (
     <div className="relative w-full h-full rounded-xl shadow-sm overflow-hidden">
-      <MapContainer 
-        center={[39.9612, -82.9988]} 
-        zoom={13} 
+      <MapContainer
+        center={[39.9612, -82.9988]}
+        zoom={13}
         style={{ height: '100%', width: '100%' }}
         className="z-0"
         ref={(map) => setMapInstance(map)}
@@ -248,9 +280,9 @@ const AQMap = () => {
               }}
             >
               <Popup>
-                <div className="p-1 w-56">
-                  <button 
-                    className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 transition-colors z-[1]"
+                <div className="p-1 w-56"> {/* Increased width slightly for better spacing */}
+                  <button
+                    className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 transition-colors z-[1]" // Ensure button is clickable
                     onClick={(ev) => {
                       ev.stopPropagation();
                       if (mapInstance) mapInstance.closePopup();
@@ -262,9 +294,10 @@ const AQMap = () => {
                   </button>
 
                   <div className="font-semibold text-base mb-1 pr-5">{sensor.name}</div>
-                  <div 
+
+                  <div
                     className="text-xs inline-block px-2 py-1 rounded-full my-1.5 font-medium"
-                    style={{ 
+                    style={{
                       backgroundColor: `${sensor.aqiCategory?.color || '#e5e7eb'}33`,
                       color: sensor.aqiCategory?.color || '#4b5563'
                     }}
@@ -285,6 +318,7 @@ const AQMap = () => {
                       <span className="text-gray-600">Humidity:</span>
                       <span className="font-semibold">{sensor.humidity?.toFixed(0) ?? 'N/A'}%</span>
                     </div>
+
                     <div className="flex justify-between pt-1 border-t border-gray-200 mt-1.5">
                       <span className="text-gray-500 text-xs">Last Updated:</span>
                       <span className="font-medium text-xs">
@@ -299,25 +333,43 @@ const AQMap = () => {
                     </div>
                   </div>
                 </div>
-
                 <button
                   className="mt-3 w-full text-center bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1.5 rounded-md transition-all"
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate(`/dashboard?sensorId=${sensor.id}`);
+                    navigate(`/dashboard?sensorId=${sensor.id}#charts`);
                   }}
                 >
                   View Details
                 </button>
+
               </Popup>
             </Marker>
           );
         })}
       </MapContainer>
 
-      {/* ✅ Responsive AQI Legend */}
-        <MobileLegend />
-        <DesktopLegend />
+      <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md px-3 py-2.5 rounded-lg shadow-md text-xs z-[1000]">
+        <div className="font-medium mb-1.5 text-gray-700">AQI Legend</div>
+        <div className="flex flex-col space-y-1">
+          {[
+            { label: 'Good', color: '#4ade80' },
+            { label: 'Moderate', color: '#facc15' },
+            { label: 'Unhealthy for Sensitive', color: '#f97316' },
+            { label: 'Unhealthy', color: '#ef4444' },
+            { label: 'Very Unhealthy', color: '#8b5cf6' },
+            { label: 'Hazardous', color: '#7f1d1d' },
+          ].map((item) => (
+            <div key={item.label} className="flex items-center gap-2">
+              <div
+                className="w-3 h-3 rounded-full border border-gray-300"
+                style={{ backgroundColor: item.color }}
+              />
+              <span className="text-gray-600">{item.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };

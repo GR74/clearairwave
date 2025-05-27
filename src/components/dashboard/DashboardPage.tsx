@@ -189,8 +189,8 @@ useEffect(() => {
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
-          <div className="lg:col-span-2 glass-card rounded-lg p-5">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-10">
+          <div id="charts" className="lg:col-span-3 glass-card rounded-lg p-5">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-4">
               <div className="flex flex-col space-y-2">
                 <h3 className="text-lg font-medium">Air Quality Trend</h3>
@@ -248,7 +248,7 @@ useEffect(() => {
                 timeRange={timeRange}
                 sensorId={selectedSensorId}
                 selectedMetric={selectedMetric}
-                height={280}
+                height={450}
                 onDataLoaded={() => setLastUpdated(new Date())}
               />
 
@@ -259,7 +259,7 @@ useEffect(() => {
           </div>
           
 
-          <div className="space-y-5">
+          <div className="space-y-5 lg:col-span-1">
 
             
 
