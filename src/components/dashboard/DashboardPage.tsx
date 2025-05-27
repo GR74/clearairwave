@@ -191,7 +191,7 @@ useEffect(() => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
-          <div className="lg:col-span-2 glass-card rounded-lg p-5">
+          <div id="charts" className="lg:col-span-2 glass-card rounded-lg p-5">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-4">
               <div className="flex flex-col space-y-2">
                 <h3 className="text-lg font-medium">Air Quality Trend</h3>
