@@ -276,9 +276,9 @@ if (showLoadingOrNoData) {
 
 
   return (
-    <div className="w-full overflow-hidden bg-white p-4 rounded-xl shadow-lg">
+    <div className="w-full overflow-hidden bg-white p-2 rounded-xl shadow-lg">
       <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={finalData} margin={{ top: 5, right: 30, left: 20, bottom: 40 }}>
+        <LineChart data={finalData} margin={{ top: 5, right: 20, left: 10, bottom: 30 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
           <XAxis
             dataKey="time"
@@ -308,16 +308,22 @@ if (showLoadingOrNoData) {
               position: 'insideLeft',
               fill: '#4b5563', 
               fontSize: 12,
-              dy: 40, 
+              dy: 30, 
             }}
             domain={[0, maxValue]}
             tick={{ fontSize: 10, fill: '#6b7280' }}
-            stroke="#d1d5db" 
+            stroke="#d1d5db"
+            width={40}
           />
           <Tooltip content={<CustomTooltip />} />
           <Legend
             formatter={(value, entry) => <span style={{ color: entry.color }}>{value}</span>}
-            wrapperStyle={{ paddingTop: '20px' }} 
+            wrapperStyle={{ 
+              paddingTop: '5px',
+              fontSize: '12px'
+            }}
+            verticalAlign="bottom"
+            align="center"
           />
           <Line
             type="monotone"
@@ -333,7 +339,7 @@ if (showLoadingOrNoData) {
           />
         </LineChart>
       </ResponsiveContainer>
-      <p className="text-xs text-gray-400 mt-2 text-center">
+      <p className="text-xs text-gray-400 -mt-1 text-center">
   {timeRange === '24h'
     ? 'Values shown are hourly averages.'
     : 'Values shown are daily averages.'}
