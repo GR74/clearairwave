@@ -33,7 +33,7 @@ const DataTable = () => {
   const refreshData = async () => {
   try {
     setIsLoading(true);
-    const response = await axios.get('http://localhost:3001/api/refreshtable');
+    const response = await axios.get('https://clearairwave.onrender.com/api/refreshtable');
     setRealSensors(response.data);
   } catch (err) {
     setError(err instanceof Error ? err : new Error('Failed to refresh sensor data'));
@@ -48,7 +48,7 @@ const DataTable = () => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const response = await axios.get('http://localhost:3001/api/sensors');
+        const response = await axios.get('https://clearairwave.onrender.com/api/sensors');
         setRealSensors(response.data); // Set real sensor data
         setIsLoading(false);
       } catch (err) {
@@ -314,10 +314,15 @@ const DataTable = () => {
                 <td className="py-3 px-4 text-sm">{sensor.temperature.toFixed(1)} °C</td>
                 <td className="py-3 px-4 text-sm">{sensor.humidity.toFixed(0)}%</td>
                 <td className="py-3 px-4 text-sm">
-                  {new Date(sensor.lastUpdated).toLocaleString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
+                 {new Date(sensor.lastUpdated+ 'Z').toLocaleString(undefined, {
+  year: 'numeric',
+  month: 'short',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: true,
+})}
+
                 </td>
               </tr>
             ))}

@@ -67,17 +67,44 @@ const Header = () => {
         }
       )}
     >
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
-        {/* Logo */}
-        <Link 
-          to="/" 
-          className="flex items-center space-x-2 text-primary transition-opacity hover:opacity-80"
-        >
-          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-            <div className="w-5 h-5 rounded-full bg-primary animate-pulse-slow"></div>
-          </div>
-          <span className="font-medium text-lg tracking-tight">ClearSkies AQ</span>
-        </Link>
+     <div className="max-w-7xl mx-auto flex items-center justify-between">
+  {/* Logo + Brand + SimpleAQ (merged and vertically centered) */}
+  <div className="flex items-center gap-2">
+    <Link 
+      to="/" 
+      className="flex items-center gap-2 text-primary transition-opacity hover:opacity-80"
+    >
+      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+        <div className="w-5 h-5 rounded-full bg-primary animate-pulse-slow"></div>
+      </div>
+      <span className="font-medium text-lg tracking-tight leading-none">ClearSkies AQ</span>
+    </Link>
+
+    {/* SimpleAQ badge */}
+    <a 
+      href="https://www.simpleaq.org/" 
+      target="_blank" 
+      rel="noopener noreferrer" 
+      className="flex items-center bg-[#f1f5f9] px-2 py-0.5 rounded-md text-xs font-medium leading-none"
+      style={{ color: '#859973' }}
+    >
+      <span className="leading-none">Powered by SimpleAQ</span>
+      <img 
+        src="/simpleaq_logo.png"
+        alt="SimpleAQ Logo"
+        className="w-4 h-4 ml-1"
+      />
+    </a>
+  </div>
+
+
+
+
+
+
+
+
+
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-1">

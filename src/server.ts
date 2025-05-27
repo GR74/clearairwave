@@ -216,5 +216,5 @@ app.get("/api/statistics", (req, res) => res.json(statistics));
 
 // ------------------------
 app.listen(PORT, () => {
-  console.log(`🌐 Server is running at http://localhost:${PORT}`);
+  console.log(`🌐 Server is running at ${PORT}`);
 });

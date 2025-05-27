@@ -17,7 +17,7 @@ const HeroSection = () => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const response = await axios.get("http://localhost:3001/api/sensors");
+        const response = await axios.get("https://clearairwave.onrender.com/api/sensors");
         setRealSensors(response.data); // Set real sensor data
         setIsLoading(false);
       } catch (err) {
@@ -149,15 +149,14 @@ const HeroSection = () => {
               cardClassName="animate-slide-up [animation-delay:300ms]"
             />
 
-            <div className="glass-card rounded-xl p-5 flex items-center justify-center animate-slide-up [animation-delay:400ms]">
-              <div className="text-center">
-                <div className="text-sm font-medium text-muted-foreground mb-1">Live Sensors</div>
-                <div className="text-2xl font-semibold">{realSensors.length}</div>
-                <div className="text-sm text-muted-foreground mt-1">
-                  Monitoring stations online
-                </div>
-              </div>
-            </div>
+            <DataCard
+  title="Live Sensors"
+  value={realSensors.length}
+  icon={<Wind className="h-5 w-5 text-primary" />} // Or another relevant icon
+  description="Monitoring stations online"
+  cardClassName="animate-slide-up [animation-delay:400ms]"
+/>
+
           </div>
         </div>
       </div>

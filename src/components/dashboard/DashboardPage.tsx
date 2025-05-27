@@ -45,7 +45,7 @@ const sensorIdFromQuery = searchParams.get('sensorId');
 useEffect(() => {
   const fetchSensorNames = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/api/sensors');
+      const response = await axios.get('https://clearairwave.onrender.com/api/sensors');
       const sensors: SensorInfo[] = response.data.map((sensor: any) => ({
         id: sensor.id,
         name: sensor.name,
@@ -87,7 +87,7 @@ useEffect(() => {
   const fetchMainData = async () => {
     try {
       setIsLoading(true);
-      const response = await axios.get('http://localhost:3001/api/sensors');
+      const response = await axios.get('https://clearairwave.onrender.com/api/sensors');
       setRealSensors(response.data);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to fetch sensors'));
@@ -154,6 +154,7 @@ useEffect(() => {
     }));
 
   return (
+    
     <div className="py-10">
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <div className="mb-8">
@@ -252,12 +253,16 @@ useEffect(() => {
                 height={280}
                 onDataLoaded={() => setLastUpdated(new Date())}
               />
+
+              
             </div>
 
 
           </div>
+          
 
           <div className="space-y-5">
+
             
 
             <div className="glass-card rounded-lg p-5">
@@ -290,9 +295,13 @@ useEffect(() => {
             </div>
           </div>
         </div>
+                <p className="text-xs text-muted-foreground text-center italic mb-8">
+  Disclaimer: Air quality data is collected from community-deployed sensors for informational purposes. These sensors are not certified regulatory monitors and may vary in accuracy.
+</p>
 
         <div id="allSensors"></div>
         <DataTable />
+        
       </div>
     </div>
   );

@@ -12,20 +12,20 @@ interface Developer {
 const developers: Developer[] = [
   {
     name: "Aniket Chaudhari",
-    role: "Backend & Server Integration",
-    img: "src/images/IMG_3962.jpeg",
+    role: "Backend Developer & Server Systems Engineer",
+    img: "/images/IMG_3962.jpeg",
     linkedin: "https://www.linkedin.com/in/aniket-chaudhari-12238833a/",
   },
   {
     name: "Gowrish Rajagopal",
-    role: "Project Lead & Full Stack Developer",
-    img: "src/images/IMG_5048.jpeg",
+    role: "Lead System Architect & Integration Engineer",
+    img: "/images/IMG_5048.jpeg",
     linkedin: "https://www.linkedin.com/in/gowrishrajagopal/",
   },
   {
     name: "Yasharth Pandey",
-    role: "Frontend & Pipeline Integration",
-    img: "src/images/IMG_9273.jpeg",
+    role: "Frontend Developer & UI Engineer",
+    img: "/images/IMG_9273.jpeg",
     linkedin: "https://www.linkedin.com/in/yasharth-pandey/",
   },
 ];
@@ -41,7 +41,7 @@ const AboutPage: React.FC = () => {
         <div className="md:w-1/2">
           <div className = "w-full">
             <img
-            src="src/images/lickinggg.jpg"
+            src="/images/lickinggg.jpg"
             alt="Community Sensor"
             className="rounded-2xl w-full max-w-[600px] max-h-[400px] object-contain"
           />
@@ -53,16 +53,10 @@ const AboutPage: React.FC = () => {
             Our Mission
           </h2>
           <p className="text-lg leading-relaxed text-gray-700">
-            <strong>Clean air belongs to everyone.</strong>
+            <strong>Clean air is a basic right.</strong>
             <br />
-            This website is part of a community-driven initiative to monitor and
-            improve air quality in Licking County using affordable, open-source technology.
-            Born out of a desire to make environmental data accessible to all,
-            this project empowers neighborhoods to host sensors, view live
-            data, and take action based on real-time air conditions. The
-            platform is fully open-source, built with transparency and
-            collaboration in mind — and we invite others to join, build, and
-            improve it.
+            
+This project is a community-driven initiative to monitor and improve air quality in Licking County using affordable, open-source technology. We aim to make environmental data accessible to all — empowering residents to host sensors, view real-time data, and make informed decisions based on local air conditions.
           </p>
         </div>
       </section>
@@ -71,32 +65,31 @@ const AboutPage: React.FC = () => {
       <section className="min-h-screen flex flex-col-reverse md:flex-row items-center justify-center px-6 py-16 bg-white gap-x-20">
         <div className="md:w-1/2 md:pr-12 mt-8 md:mt-0">
           <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-cyan-400 bg-clip-text text-transparent mb-4">
-            The Devices
-          </h2>
-          <p className="text-lg leading-relaxed text-gray-700">
-            <strong>Built for communities. Trusted by science.</strong>
-            <br />
-            The air quality data on this site is powered by SimpleAQ sensors —
-            low-cost, open-source devices. These devices
-            use laser-based particle sensors to monitor PM2.5 concentrations and
-            relay that data over Wi-Fi in real time. With a focus on simplicity,
-            affordability, and reliability, SimpleAQ devices make it possible
-            for anyone to contribute to environmental monitoring. Learn more at{" "}
-            <a
-              href="https://simpleaq.org/blog/what_is_simpleaq"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 underline"
-            >
-              simpleaq.org
-            </a>
-            .
-          </p>
-        </div>
+  The Devices
+</h2>
+<p className="text-lg leading-relaxed text-gray-700">
+  <strong>Built for communities. Trusted by science.</strong>
+  <br />
+  The air quality data on this site is powered by SimpleAQ sensors — low-cost, open-source devices
+  that measure not only PM2.5, but also key environmental metrics like 
+  temperature, humidity, and atmospheric pressure. These laser-based particle sensors
+  transmit data over Wi-Fi in real time, allowing neighborhoods to participate in grassroots environmental monitoring.
+  Designed for simplicity and reliability, SimpleAQ devices make it possible for anyone to contribute to
+  data-driven decision-making. Learn more at{" "}
+  <a
+    href="https://simpleaq.org/blog/what_is_simpleaq"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="text-blue-600 underline"
+  >
+    simpleaq.org
+  </a>.
+</p>
+</div>
         <div className="md:w-1/2">
             <div className = "w-full">
             <img
-                src="src/images/sensor for now.jpg"
+                src="/images/sensor for now.jpg"
                 alt="SimpleAQ Device"
                 className=" rounded-2xl w-full max-w-[600px] max-h-[400px] object-contain"
             />
@@ -110,6 +103,10 @@ const AboutPage: React.FC = () => {
         <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-12">
           Meet the Developers
         </h2>
+        <p className="text-muted-foreground mb-12 max-w-xl mx-auto">
+  Our team of undergraduate developers came together to build this platform with a shared passion for open data, community impact, and environmental justice.
+</p>
+
         <div className="flex flex-col md:flex-row justify-center items-center gap-10">
           {developers.map((dev, index) => (
             <div
@@ -136,6 +133,14 @@ const AboutPage: React.FC = () => {
           ))}
         </div>
       </section>
+      <footer className="bg-secondary py-6 mt-20">
+  <div className="max-w-7xl mx-auto px-6 lg:px-8 text-center">
+    <p className="text-xs text-muted-foreground">
+      ClearSkies Community Air Quality Monitoring Platform • {new Date().getFullYear()}
+    </p>
+  </div>
+</footer>
+
     </div>
     </>
   );

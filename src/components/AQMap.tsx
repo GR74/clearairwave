@@ -154,7 +154,7 @@ const AQMap = () => {
     const fetchData = async () => {
       if (!isMounted) return;
       try {
-        const response = await axios.get("http://localhost:3001/api/sensors");
+        const response = await axios.get("https://clearairwave.onrender.com/api/sensors");
         if (isMounted) {
           setSensors(response.data);
           setError(null);
@@ -291,8 +291,8 @@ const AQMap = () => {
                     <div className="flex justify-between pt-1 border-t border-gray-200 mt-1.5">
                       <span className="text-gray-500 text-xs">Last Updated:</span>
                       <span className="font-medium text-xs">
-                        {sensor.lastUpdated ? new Date(sensor.lastUpdated).toLocaleString([], {
-                          year: '2-digit',
+                        {sensor.lastUpdated ? new Date(sensor.lastUpdated+ 'Z').toLocaleString([], {
+                          year: 'numeric',
                           month: 'short',
                           day: 'numeric',
                           hour: 'numeric',

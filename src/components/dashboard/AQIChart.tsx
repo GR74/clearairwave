@@ -70,7 +70,7 @@ const AQIChart: React.FC<AQIChartProps> = ({
         const backendField = metricAliasMap[selectedMetric!] || selectedMetric!;
 
         if (timeRange === '24h') {
-          const response = await axios.get('http://localhost:3001/api/hourly', {
+          const response = await axios.get('https://clearairwave.onrender.com/api/hourly', {
             params: {
               sensor_id: sensorId,
               metric: backendField, 
@@ -78,7 +78,7 @@ const AQIChart: React.FC<AQIChartProps> = ({
           });
 
           responseData = response.data.map((item: any) => ({
-            time: new Date(item.time).toLocaleTimeString([], {
+            time: new Date(item.time+'Z').toLocaleTimeString([], {
               hour: '2-digit',
               minute: '2-digit',
             }),
@@ -86,7 +86,7 @@ const AQIChart: React.FC<AQIChartProps> = ({
           }));
         } else {
           // Fetch historical data from /api/historical
-          const response = await axios.get('http://localhost:3001/api/historical', {
+          const response = await axios.get('https://clearairwave.onrender.com/api/historical', {
             params: { 
               time_range: timeRange,
               sensor_id: sensorId,
@@ -116,7 +116,7 @@ const AQIChart: React.FC<AQIChartProps> = ({
 
           responseData = filteredHistoricalData.map((item: any) => ({
             ...item, 
-            time: new Date(item.timestamp).toLocaleDateString([], {month: 'numeric', day: 'numeric'}), // e.g., "5/14"
+            time: new Date(item.timestamp+'Z').toLocaleDateString([], {month: 'numeric', day: 'numeric'}), // e.g., "5/14"
             [dataKey]: item[backendField],
           }));
         }
@@ -333,6 +333,12 @@ if (showLoadingOrNoData) {
           />
         </LineChart>
       </ResponsiveContainer>
+      <p className="text-xs text-gray-400 mt-2 text-center">
+  {timeRange === '24h'
+    ? 'Values shown are hourly averages.'
+    : 'Values shown are daily averages.'}
+    </p>
+
     </div>
   );
 };
