@@ -1,7 +1,32 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Header from '@/components/Header';
 
+
+
 const Contact = () => {
+
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const data = new FormData(form);
+
+    const res = await fetch('https://formspree.io/f/xeogyepy', {
+      method: 'POST',
+      body: data,
+      headers: {
+        Accept: 'application/json',
+      },
+    });
+
+    if (res.ok) {
+      setSubmitted(true);
+      form.reset();
+      // Optional redirect back to the same contact page
+    }
+  };
+
   return (
     <>
       <Header />
@@ -67,10 +92,10 @@ const Contact = () => {
 
     {/* Right Column: Soft Blue Morphic Form */}
     <form
-      action="https://formspree.io/f/your_form_id"
-      method="POST"
-      className="relative z-10 bg-gradient-to-br from-blue-100 via-blue-50 to-white/80 backdrop-blur-xl border border-white/40 shadow-[0_8px_40px_rgba(0,0,0,0.1)] rounded-3xl px-10 py-10 space-y-6 w-full transition hover:shadow-[0_10px_60px_rgba(0,0,0,0.15)]"
-    >
+  onSubmit={handleSubmit}
+  className="relative z-10 bg-gradient-to-br from-blue-100 via-blue-50 to-white/80 backdrop-blur-xl border border-white/40 shadow-[0_8px_40px_rgba(0,0,0,0.1)] rounded-3xl px-10 py-10 space-y-6 w-full transition hover:shadow-[0_10px_60px_rgba(0,0,0,0.15)]"
+>
+
       <div className="absolute inset-0 bg-gradient-to-br from-white/40 via-white/20 to-white/10 rounded-3xl pointer-events-none" />
 
       <div className="grid md:grid-cols-2 gap-4 relative z-10">
@@ -110,6 +135,13 @@ const Contact = () => {
       >
         Submit
       </button>
+
+      {submitted && (
+  <p className="text-green-600 text-sm font-medium pt-2">
+    Thank you! We received your message.
+  </p>
+)}
+
     </form>
     
   </div>

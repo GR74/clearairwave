@@ -78,7 +78,7 @@ const AQIChart: React.FC<AQIChartProps> = ({
           });
 
           responseData = response.data.map((item: any) => ({
-            time: new Date(item.time).toLocaleTimeString([], {
+            time: new Date(item.time+'Z').toLocaleTimeString([], {
               hour: '2-digit',
               minute: '2-digit',
             }),
@@ -116,7 +116,7 @@ const AQIChart: React.FC<AQIChartProps> = ({
 
           responseData = filteredHistoricalData.map((item: any) => ({
             ...item, 
-            time: new Date(item.timestamp).toLocaleDateString([], {month: 'numeric', day: 'numeric'}), // e.g., "5/14"
+            time: new Date(item.timestamp+'Z').toLocaleDateString([], {month: 'numeric', day: 'numeric'}), // e.g., "5/14"
             [dataKey]: item[backendField],
           }));
         }
