@@ -7,6 +7,8 @@ import { formatPM25 } from '@/utils/aqiUtils';
 import { Users, AlertCircle, ArrowUpRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import Footer from '@/components/Footer'
+
 
 
 const Map = () => {
@@ -233,13 +235,7 @@ const Map = () => {
           </div>
         </div>
       </main>
-      <footer className="bg-gradient-to-t from-secondary to-secondary/10 py-6 mt-12">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 text-center">
-          <p className="text-xs text-muted-foreground">
-            ClearSkies Community Air Quality Monitoring Platform • {new Date().getFullYear()}
-          </p>
-        </div>
-      </footer>
+      <div><Footer/></div>
     </div>
   );
 };

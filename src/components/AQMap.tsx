@@ -8,8 +8,53 @@ import L from 'leaflet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useNavigate } from 'react-router-dom';
 
+const MobileLegend = () => (
+  <div
+    className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md px-3 py-2.5 rounded-lg shadow-md text-[10px] z-[1000] w-[180px] sm:hidden"
+    style={{ transform: 'scale(0.75)', transformOrigin: 'bottom right' }}
+  >
+    <div className="font-medium mb-1.5 text-gray-700 text-center">AQI Legend</div>
+    <div className="flex flex-col space-y-1">
+      {[
+        { label: 'Good', color: '#4ade80' },
+        { label: 'Moderate', color: '#facc15' },
+        { label: 'Unhealthy for Sensitive', color: '#f97316' },
+        { label: 'Unhealthy', color: '#ef4444' },
+        { label: 'Very Unhealthy', color: '#8b5cf6' },
+        { label: 'Hazardous', color: '#7f1d1d' },
+      ].map((item) => (
+        <div key={item.label} className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: item.color }} />
+          <span className="text-gray-600">{item.label}</span>
+        </div>
+      ))}
+    </div>
+  </div>
+);
 
-// Fix for default marker icons in Leaflet with React
+const DesktopLegend = () => (
+  <div
+    className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md px-3 py-2.5 rounded-lg shadow-md text-xs z-[1000] w-[200px] hidden sm:block"
+  >
+    <div className="font-medium mb-1.5 text-gray-700 text-center">AQI Legend</div>
+    <div className="flex flex-col space-y-1">
+      {[
+        { label: 'Good', color: '#4ade80' },
+        { label: 'Moderate', color: '#facc15' },
+        { label: 'Unhealthy for Sensitive', color: '#f97316' },
+        { label: 'Unhealthy', color: '#ef4444' },
+        { label: 'Very Unhealthy', color: '#8b5cf6' },
+        { label: 'Hazardous', color: '#7f1d1d' },
+      ].map((item) => (
+        <div key={item.label} className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: item.color }} />
+          <span className="text-gray-600">{item.label}</span>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
 (L.Icon.Default.prototype as any)._getIconUrl = undefined;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -17,24 +62,19 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-
-
-// Create custom colored markers for different AQI levels
 const createColoredIcon = (color: string) => {
   return L.divIcon({
     className: 'custom-div-icon',
     html: `<div style="background-color: ${color}; width: 42px; opacity: 0.8; height: 42px; border-radius: 50%; box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.7), 0 0 0 5px ${color}30; display: flex; align-items: center; justify-content: center;"></div>`,
-    iconSize: [42, 42], // Match the div size
-    iconAnchor: [21, 21], // Center the icon
+    iconSize: [42, 42],
+    iconAnchor: [21, 21],
   });
 };
 
-// Function to generate a random offset within ±range
 const getRandomOffset = (range: number): number => {
   return (Math.random() * 2 - 1) * range;
 };
 
-// Component to fit bounds to cover all markers
 const FitBounds = ({ sensors }: { sensors: any[] }) => {
   const map = useMap();
 
@@ -55,7 +95,6 @@ const FitBounds = ({ sensors }: { sensors: any[] }) => {
   return null;
 };
 
-// Component for the Current Location Button
 const CurrentLocationButton = () => {
   const map = useMap();
   const [isLocating, setIsLocating] = useState(false);
@@ -74,14 +113,13 @@ const CurrentLocationButton = () => {
         icon: L.divIcon({
           className: 'user-location-icon',
           html: `<div style="background-color: #3b82f6; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 0 2px #3b82f6;"></div>`,
-          iconSize: [22, 22], // Increased size for visibility with border
+          iconSize: [22, 22],
           iconAnchor: [11, 11],
         })
       }).addTo(map).bindPopup("You are here!").openPopup();
       setUserLocationMarker(newUserMarker);
       setIsLocating(false);
     }).on('locationerror', (err: L.ErrorEvent) => {
-      // Replace alert with a more user-friendly notification if possible in your app
       console.error("Location error:", err.message);
       alert("Could not access your location. Please ensure location services are enabled and permissions are granted in your browser.");
       setIsLocating(false);
@@ -108,14 +146,12 @@ const CurrentLocationButton = () => {
   );
 };
 
-
 const AQMap = () => {
   const navigate = useNavigate(); 
   const [selectedSensor, setSelectedSensor] = useState<string | null>(null);
   const [sensors, setSensors] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
-  // FIX: State to hold the map instance
   const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
 
   useEffect(() => {
@@ -139,14 +175,14 @@ const AQMap = () => {
       }
     };
 
-    fetchData(); // Initial fetch
+    fetchData();
     const intervalId = setInterval(fetchData, 60000); 
 
     return () => {
       isMounted = false;
       clearInterval(intervalId);
     };
-  }, [isLoading]); // isLoading dependency to ensure initial fetch happens and setIsLoading(false) is called once.
+  }, [isLoading]);
 
   if (error && isLoading) {
     return (
@@ -182,13 +218,13 @@ const AQMap = () => {
         />
 
         <CurrentLocationButton />
-
         {sensors.length > 0 && <FitBounds sensors={sensors} />}
 
         {sensors.map((sensor) => {
-          const randomizedLat = sensor.location.lat + getRandomOffset(0.0005);
-          const randomizedLng = sensor.location.lng + getRandomOffset(0.0005);
-          const position: [number, number] = [randomizedLat, randomizedLng];
+          const position: [number, number] = [
+            sensor.location.lat + getRandomOffset(0.0005),
+            sensor.location.lng + getRandomOffset(0.0005)
+          ];
 
           return (
             <Marker
@@ -197,31 +233,27 @@ const AQMap = () => {
               icon={createColoredIcon(sensor.aqiCategory?.color || '#9ca3af')}
               eventHandlers={{
                 click: (e) => {
-                  const map = e.target._map as L.Map; // e.target is the marker, _map is the map instance
+                  const map = e.target._map as L.Map;
                   const marker = e.target as L.Marker;
                   setSelectedSensor(sensor.id);
-
                   if (map.getZoom() < 15) {
                     map.flyTo(marker.getLatLng(), 15, { animate: true, duration: 0.5 });
-                    map.once('zoomend moveend', () => { 
-                       if (marker.getPopup() && !marker.isPopupOpen()) marker.openPopup();
+                    map.once('zoomend moveend', () => {
+                      if (marker.getPopup() && !marker.isPopupOpen()) marker.openPopup();
                     });
                   } else {
-                     if (marker.getPopup() && !marker.isPopupOpen()) marker.openPopup();
+                    if (marker.getPopup() && !marker.isPopupOpen()) marker.openPopup();
                   }
                 },
               }}
             >
               <Popup>
-                <div className="p-1 w-56"> {/* Increased width slightly for better spacing */}
+                <div className="p-1 w-56">
                   <button 
-                    className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 transition-colors z-[1]" // Ensure button is clickable
+                    className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 transition-colors z-[1]"
                     onClick={(ev) => {
                       ev.stopPropagation();
-                      // FIX: Use the stored mapInstance to close the popup
-                      if (mapInstance) {
-                        mapInstance.closePopup();
-                      }
+                      if (mapInstance) mapInstance.closePopup();
                       setSelectedSensor(null);
                     }}
                     aria-label="Close popup"
@@ -230,7 +262,6 @@ const AQMap = () => {
                   </button>
 
                   <div className="font-semibold text-base mb-1 pr-5">{sensor.name}</div>
-
                   <div 
                     className="text-xs inline-block px-2 py-1 rounded-full my-1.5 font-medium"
                     style={{ 
@@ -246,21 +277,18 @@ const AQMap = () => {
                       <span className="text-gray-600">PM2.5:</span>
                       <span className="font-semibold">{formatPM25(sensor.pm25)} µg/m³</span>
                     </div>
-
                     <div className="flex justify-between">
                       <span className="text-gray-600">Temperature:</span>
                       <span className="font-semibold">{sensor.temperature?.toFixed(1) ?? 'N/A'} °C</span>
                     </div>
-
                     <div className="flex justify-between">
                       <span className="text-gray-600">Humidity:</span>
                       <span className="font-semibold">{sensor.humidity?.toFixed(0) ?? 'N/A'}%</span>
                     </div>
-                    
                     <div className="flex justify-between pt-1 border-t border-gray-200 mt-1.5">
                       <span className="text-gray-500 text-xs">Last Updated:</span>
                       <span className="font-medium text-xs">
-                        {sensor.lastUpdated ? new Date(sensor.lastUpdated+ 'Z').toLocaleString([], {
+                        {sensor.lastUpdated ? new Date(sensor.lastUpdated + 'Z').toLocaleString([], {
                           year: 'numeric',
                           month: 'short',
                           day: 'numeric',
@@ -271,43 +299,25 @@ const AQMap = () => {
                     </div>
                   </div>
                 </div>
-                 <button
-  className="mt-3 w-full text-center bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1.5 rounded-md transition-all"
-  onClick={(e) => {
-    e.stopPropagation();
-    navigate(`/dashboard?sensorId=${sensor.id}`);
-  }}
->
-  View Details
-</button>
 
+                <button
+                  className="mt-3 w-full text-center bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-1.5 rounded-md transition-all"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/dashboard?sensorId=${sensor.id}`);
+                  }}
+                >
+                  View Details
+                </button>
               </Popup>
             </Marker>
           );
         })}
       </MapContainer>
 
-      <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md px-3 py-2.5 rounded-lg shadow-md text-xs z-[1000]">
-        <div className="font-medium mb-1.5 text-gray-700">AQI Legend</div>
-        <div className="flex flex-col space-y-1">
-          {[
-            { label: 'Good', color: '#4ade80' },
-            { label: 'Moderate', color: '#facc15' },
-            { label: 'Unhealthy for Sensitive', color: '#f97316' },
-            { label: 'Unhealthy', color: '#ef4444' },
-            { label: 'Very Unhealthy', color: '#8b5cf6' },
-            { label: 'Hazardous', color: '#7f1d1d' },
-          ].map((item) => (
-            <div key={item.label} className="flex items-center gap-2">
-              <div 
-                className="w-3 h-3 rounded-full border border-gray-300" 
-                style={{ backgroundColor: item.color }}
-              />
-              <span className="text-gray-600">{item.label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* ✅ Responsive AQI Legend */}
+        <MobileLegend />
+        <DesktopLegend />
     </div>
   );
 };

@@ -15,8 +15,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useLocation, useSearchParams } from 'react-router-dom';
 
 
-
-
 const DashboardPage = () => {
 
   type SensorInfo = {

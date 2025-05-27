@@ -1,33 +1,61 @@
 import React, { useState } from 'react';
+import { db } from "@/components/firebase"; // adjust path if needed
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { query, where, getDocs } from "firebase/firestore";
+
 
 
 const EmailSubscription = () => {
   const [title, setTitle] = useState('');
 
+  //Checks if email is in proper format
+  const isValidEmail = (email: string): boolean => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+};
+
   //Chat created button click function to send welcome email to user through pipedream
   const handleSubmit = async () => {
-    if (!title) {
+    if (!title || !isValidEmail(title)) {
       alert("Please enter an email address");
       return;
     }
   
     try {
-      const response = await fetch("https://eo3nb8qkt3n52xu.m.pipedream.net", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: title }),
-      });
-  
-      if (response.ok) {
-        alert("Subscription successful! Check your inbox for a welcome email.");
-        setTitle(""); // Clear input field after submission
-      } else {
-        alert("Failed to subscribe. Please try again.");
-      }
-    } catch (error) {
-      console.error("Error subscribing:", error);
-      alert("An error occurred. Please try again later.");
-    }
+  // Save email to Firestore
+
+  //Logic to Prevent Duplicates
+  const emailQuery = query(
+  collection(db, "emails"),
+  where("email", "==", title)
+  );
+  const querySnapshot = await getDocs(emailQuery);
+  if (!querySnapshot.empty) {
+  alert("You're already subscribed!");
+  return;
+  }
+
+  await addDoc(collection(db, "emails"), {
+    email: title,
+    timestamp: serverTimestamp(),
+  });
+
+  // Send to Pipedream (existing code)
+  const response = await fetch("https://eo3nb8qkt3n52xu.m.pipedream.net", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: title }),
+  });
+
+  if (response.ok) {
+    alert("Subscription successful! Check your inbox for a welcome email.");
+    setTitle("");
+  } else {
+    alert("Failed to subscribe. Please try again.");
+  }
+} catch (error) {
+  console.error("Error subscribing:", error);
+  alert("An error occurred. Please try again later.");
+}
   };
 
   return (

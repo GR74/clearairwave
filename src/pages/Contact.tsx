@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import Header from '@/components/Header';
+import Footer from '@/components/Footer'
+
 
 
 
@@ -147,13 +149,7 @@ const Contact = () => {
   </div>
 </section>
 
-<footer className="bg-secondary py-6">
-  <div className="max-w-7xl mx-auto px-6 lg:px-8 text-center">
-    <p className="text-xs text-muted-foreground">
-      ClearSkies Community Air Quality Monitoring Platform • {new Date().getFullYear()}
-    </p>
-  </div>
-</footer>
+<Footer/>
 
 
     </>
