@@ -290,7 +290,7 @@ const AQMap = () => {
                     }}
                     aria-label="Close popup"
                   >
-                    <X className="h-4 w-4" />
+                    {/*REMOVED: <X className="h-4 w-4" /> */}
                   </button>
 
                   <div className="font-semibold text-base mb-1 pr-5">{sensor.name}</div>

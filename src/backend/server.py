@@ -21,10 +21,28 @@ from tenacity import (
     stop_after_attempt,
 )
 
+
+#Firebase Integration for Real Time Notifications
+import firebase_admin
+from firebase_admin import credentials, firestore
+
+
+cred = credentials.Certificate("firebase-credentials.json")
+firebase_admin.initialize_app(cred)
+db = firestore.client()
+
+
+def get_subscriber_emails():
+    emails_ref = db.collection("emails")
+    docs = emails_ref.stream()
+    return [doc.to_dict().get("email") for doc in docs]
+
+
 # ----------------------------------------
 # AQI Utility Functions (from aqiUtils.ts)
-# i lovemen
+# Gowrish lovemen
 # ----------------------------------------
+
 
 AQI_BREAKPOINTS = [
     {"min": 0, "max": 12, "category": "Good", "color": "#4ade80"},
@@ -34,6 +52,7 @@ AQI_BREAKPOINTS = [
     {"min": 150.5, "max": 250.4, "category": "Very Unhealthy", "color": "#c084fc"},
     {"min": 250.5, "max": 500, "category": "Hazardous", "color": "#ef4444"}
 ]
+
 
 DATA_VAL_DICT = {
     "pm2.5": "pm2.5_ug_m3",
@@ -48,7 +67,10 @@ DATA_VAL_DICT = {
     "SO2": "SO2_concentration_ppm",
 }
 
+
 INVERSE_DATA_VAL_DICT = {v: k for k, v in DATA_VAL_DICT.items()}
+
+
 
 
 # Adjust these retry parameters as you like
@@ -60,6 +82,8 @@ INVERSE_DATA_VAL_DICT = {v: k for k, v in DATA_VAL_DICT.items()}
         retry_if_exception_type(httpx.HTTPStatusError)
     ),
 )
+
+
 
 
 def calculate_aqi(pm25: float) -> int:
@@ -75,11 +99,13 @@ def calculate_aqi(pm25: float) -> int:
             return round(aqi)
     return 500
 
+
 def get_aqi_category(pm25: float) -> dict:
     for bp in AQI_BREAKPOINTS:
         if pm25 <= bp["max"]:
             return {"category": bp["category"], "color": bp["color"]}
     return {"category": "Hazardous", "color": "#ef4444"}
+
 
 def get_health_recommendations(category: str) -> str:
     if category == "Good":
@@ -100,8 +126,11 @@ def get_health_recommendations(category: str) -> str:
     else:
         return "Air quality information is currently unavailable."
 
+
 def format_pm25(pm25: float) -> str:
     return f"{pm25:.1f}"
+
+
 
 
 def fetch_latest_utc_epoch(sensor_id: str) -> int:
@@ -119,17 +148,23 @@ def fetch_latest_utc_epoch(sensor_id: str) -> int:
 
 
 
+
+
+
 # ----------------------------------------
 # Pydantic Models for API Data
 # ----------------------------------------
+
 
 class Location(BaseModel):
     lat: float
     lng: float
 
+
 class AQICategory(BaseModel):
     category: str
     color: str
+
 
 class Sensor(BaseModel):
     id: str
@@ -143,9 +178,11 @@ class Sensor(BaseModel):
     aqi: Optional[float] = None
     aqiCategory: Optional[AQICategory] = None
 
+
 class HistoricalDataPoint(BaseModel):
     timestamp: datetime
     metric: Optional[float] = None
+
 
 class HourlyDataPoint(BaseModel):
     time: datetime
@@ -153,9 +190,13 @@ class HourlyDataPoint(BaseModel):
 
 
 
+
+
+
 # ----------------------------------------
 # Global Data Store
 # ----------------------------------------
+
 
 DATA = {
     "sensors": [],
@@ -164,16 +205,18 @@ DATA = {
     "statistics": {}
 }
 
+
 # ----------------------------------------
 # Data Fetching and Generation Functions
 # ----------------------------------------
+
 
 def fetch_pm25_data() -> dict:
     url = (
         "https://www.simpleaq.org/api/getdata?field=pm2.5"
         "&min_lat=39.939889&max_lat=40.277507&min_lon=-82.782446&max_lon=-82.195962"
         f"&utc_epoch={int(time.time()) * 1000}"  # static timestamp that worked
-        
+       
     )
     try:
         response = httpx.get(url, timeout=10.0)
@@ -186,8 +229,11 @@ def fetch_pm25_data() -> dict:
         return {}
 
 
+
+
 def random_in_range(min_val: float, max_val: float) -> float:
     return random.uniform(min_val, max_val)
+
 
 def generate_sensors(sensor_json: dict) -> List[Sensor]:
     sensors = []
@@ -198,24 +244,24 @@ def generate_sensors(sensor_json: dict) -> List[Sensor]:
             latitude = sensor_data.get("latitude")
             longitude = sensor_data.get("longitude")
             timestamp_str = datetime.now().isoformat()
-            value = sensor_data.get("value") 
+            value = sensor_data.get("value")
             range_hours = 1
-            
+           
             # Fetch additional graph data for PM2.5
             field = {"pm2.5_ug_m3" : 0, "pressure_hPa" : 0 ,"temperature_C" : 0, "humidity_percent" : 0}
             for f in field.keys():
-                
+               
                 url = f"https://www.simpleaq.org/api/getgraphdata?id={idN}&field={f}&rangehours={range_hours}&time={timestamp_str}"
                 field[f] = httpx.get(url, timeout=10.0)
                 field[f].raise_for_status()
                 # print("each sensor data: ", field[f].json())
                 graph_data = field[f].json().get("value", [])
                 # print("Graph data for field", f, ":", graph_data)
-                
+               
                 if f == "pm2.5_ug_m3":
                     if graph_data and len(graph_data) > 0 :
                         try:
-                            
+                           
                             pm25 = float(graph_data[-1])
                            
                         except:
@@ -250,7 +296,7 @@ def generate_sensors(sensor_json: dict) -> List[Sensor]:
                     last_updated = datetime.fromisoformat(timestamp_str)
                 except Exception:
                     last_updated = datetime.now()
-            
+           
             sensor_obj = Sensor(
                 id=idN,
                 name=name,
@@ -268,6 +314,7 @@ def generate_sensors(sensor_json: dict) -> List[Sensor]:
             print(f"Error processing sensor {sensor_data.get('name')}: {e}")
     # print(sensors)
     return sensors
+
 
 async def _fetch_chunk_async(
     client: httpx.AsyncClient,
@@ -304,15 +351,20 @@ async def _fetch_chunk_async(
     }
 
 
+
+
 import asyncio
 from datetime import datetime, timedelta, timezone
 from collections import defaultdict
 from typing import List, Dict, Optional, Any
 
+
 import httpx
 from tenacity import retry, stop_after_delay, wait_exponential, retry_if_exception_type
 
+
 # your existing retry‐decorated fetch_chunk_async here…
+
 
 async def generate_historical_data(
     sensor_id: str,
@@ -325,13 +377,16 @@ async def generate_historical_data(
     else:  # "30d" or anything else
         days_to_return = 35
 
+
     chunk_days  = 7
     chunk_hours = chunk_days * 24
+
 
     # map api_field → output key
     output_key = INVERSE_DATA_VAL_DICT.get(api_field)
     if output_key is None:
         raise ValueError(f"No matching output key for API field: {api_field}")
+
 
     # 2️⃣ build list of chunk end‐times
     now = datetime.now(timezone.utc)
@@ -342,6 +397,7 @@ async def generate_historical_data(
         for i in range(num_chunks)
     ]
 
+
     # 3️⃣ fetch all chunks in parallel
     async with httpx.AsyncClient() as client:
         tasks = [
@@ -350,14 +406,17 @@ async def generate_historical_data(
         ]
         chunks: List[Dict[str, Any]] = await asyncio.gather(*tasks)
 
+
     # 4️⃣ aggregate: raw → hourly buckets → daily buckets
     daily_sum   = defaultdict(float)
     daily_count = defaultdict(int)
+
 
     for chunk in chunks:
         # first pass: bucket into hours
         hourly_sum   = defaultdict(float)
         hourly_count = defaultdict(int)
+
 
         for ts_str, val_str in zip(chunk["time"], chunk["value"]):
             try:
@@ -367,6 +426,7 @@ async def generate_historical_data(
                 hourly_count[hour_bucket] += 1
             except Exception:
                 continue
+
 
         # second pass: collapse each hourly bucket into the day's tally
         for hour_dt, total in hourly_sum.items():
@@ -378,6 +438,7 @@ async def generate_historical_data(
             daily_sum[day_key]   += hourly_avg
             daily_count[day_key] += 1
 
+
     # 5️⃣ build the final list, one entry per day (fills in missing days with None)
     result: List[Dict[str, Optional[float]]] = []
     for offset in range(days_to_return - 1, -1, -1):
@@ -387,24 +448,29 @@ async def generate_historical_data(
         else:
             day_avg = None
 
+
         ts_midnight = datetime(day.year, day.month, day.day, tzinfo=timezone.utc)
         result.append({
             "timestamp": ts_midnight.strftime("%Y-%m-%dT00:00:00"),
             output_key: day_avg
         })
 
+
     return result
+
+
 
 
 def generate_24hour_data(time, field, sensor_id) -> List[HourlyDataPoint]:
     raw = transform_data_from_url(sensor_id, field, time, 24)
+
 
     # Parse timestamps and values
     records = [
         (datetime.fromisoformat(ts.rstrip("Z")).replace(tzinfo=timezone.utc), float(val))
         for ts, val in zip(raw["time"], raw["value"])
     ]
-    
+   
     # Group data by hour
     hourly_data = {}
     for timestamp, value in records:
@@ -412,7 +478,7 @@ def generate_24hour_data(time, field, sensor_id) -> List[HourlyDataPoint]:
         if hour_key not in hourly_data:
             hourly_data[hour_key] = []
         hourly_data[hour_key].append(value)
-    
+   
     # Calculate hourly averages
     result = []
     metric_key = INVERSE_DATA_VAL_DICT.get(field)
@@ -420,17 +486,20 @@ def generate_24hour_data(time, field, sensor_id) -> List[HourlyDataPoint]:
         values = hourly_data[hour]
         metric_avg = sum(values) / len(values)
         aqi = calculate_aqi(metric_avg)
-        
+       
         data_point = {
             "time": hour.strftime("%Y-%m-%dT%H:00:00")
         }
-        
+       
         if metric_key:
             data_point[metric_key] = round(metric_avg, 4)
 
+
         result.append(data_point)
-    
+   
     return result
+
+
 
 
 def transform_data_from_url(sensor_id: str, field: str, time: str, range_hours: int) -> dict:
@@ -453,6 +522,8 @@ def transform_data_from_url(sensor_id: str, field: str, time: str, range_hours: 
     return data
 
 
+
+
 def calculate_statistics(sensors: List[Sensor]) -> Dict:
     if not sensors:
         return {}
@@ -471,9 +542,57 @@ def calculate_statistics(sensors: List[Sensor]) -> Dict:
         "aqiDistribution": aqi_distribution
     }
 
+
 def refresh_data():
+
+
+
+
     raw_data = fetch_pm25_data()
     sensors = generate_sensors(raw_data)
+
+
+
+
+    global previously_safe_ids
+    UNHEALTHY_CATEGORIES = {"Unhealthy", "Very Unhealthy", "Hazardous", "Moderate"} #Moderate is only added for testing purposes
+    triggered_sensors = []
+
+
+
+
+    #Detect new unhealthy sensors
+    for sensor in sensors:
+        if sensor.aqiCategory and sensor.aqiCategory.category in UNHEALTHY_CATEGORIES:
+            if sensor.id in previously_safe_ids:
+               triggered_sensors.append(sensor)
+
+
+
+
+    if triggered_sensors:
+        # Send to PipeDream
+        httpx.post("https://eoij4e0zx2dt0s7.m.pipedream.net", json={
+            "sensors": [
+                {"name": s.name, "aqi": s.aqi, "category": s.aqiCategory.category}
+                for s in triggered_sensors
+                ]
+        })
+        print(f"🚨 Triggered {len(triggered_sensors)} sensors!")
+        for s in triggered_sensors:
+            print(f"  ↳ {s.name} is now {s.aqiCategory.category}")
+
+
+    # Update previously_safe_ids for next check
+    previously_safe_ids = {
+        sensor.id
+        for sensor in sensors
+        if sensor.aqiCategory and sensor.aqiCategory.category not in UNHEALTHY_CATEGORIES
+    }
+
+
+
+
     # # ⚠️ Fix is here: Only generate hourly data for the first available sensor
     if sensors:
         default_sensor_id = sensors[0].id
@@ -483,7 +602,13 @@ def refresh_data():
         hourly = []
         # historical = []
 
+
+
+
     stats = calculate_statistics(sensors)
+
+
+
 
     DATA["sensors"] = sensors
     # DATA["historical"] = historical
@@ -578,6 +703,9 @@ def get_hourly(sensor_id: Optional[str] = Query(None), metric: Optional[str] = Q
 def get_statistics():
     return DATA["statistics"]
 
+
+# Track sensors that were healthy in the last refresh
+previously_safe_ids = set()
 
 # ----------------------------------------
 # Run the Server (Uvicorn)
