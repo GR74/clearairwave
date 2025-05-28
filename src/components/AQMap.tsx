@@ -353,7 +353,7 @@ const AQMap = () => {
         })}
       </MapContainer>
 
-      <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md px-3 py-2.5 rounded-lg shadow-md text-xs z-[1000]">
+      <div className="absolute bottom-16 right-4 bg-white/90 backdrop-blur-md px-3 py-2.5 rounded-lg shadow-md text-xs z-[1000]">
         <div className="font-medium mb-1.5 text-gray-700">AQI Legend</div>
         <div className="flex flex-col space-y-1">
           {[
