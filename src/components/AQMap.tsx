@@ -44,8 +44,12 @@ const FitBounds = ({ sensors }: { sensors: any[] }) => {
         ])
       );
       if (bounds.isValid()) {
-        map.fitBounds(bounds, { padding: [50, 50] });
-      }
+  map.fitBounds(bounds, {
+    paddingTopLeft: [50, 50],
+    paddingBottomRight: [150, 100], // Prevent overlap with legend/buttons
+  });
+}
+
     }
   }, [map, sensors]);
 
