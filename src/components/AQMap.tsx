@@ -259,18 +259,24 @@ const AQMap = () => {
               icon={createColoredIcon(sensor.aqiCategory?.color || '#9ca3af')}
               eventHandlers={{
                 click: (e) => {
-                  const map = e.target._map as L.Map;
-                  const marker = e.target as L.Marker;
-                  setSelectedSensor(sensor.id);
-                  if (map.getZoom() < 15) {
-                    map.flyTo(marker.getLatLng(), 15, { animate: true, duration: 0.5 });
-                    map.once('zoomend moveend', () => {
-                      if (marker.getPopup() && !marker.isPopupOpen()) marker.openPopup();
-                    });
-                  } else {
-                    if (marker.getPopup() && !marker.isPopupOpen()) marker.openPopup();
-                  }
-                },
+  const map = e.target._map as L.Map;
+  const marker = e.target as L.Marker;
+  const latlng = marker.getLatLng();
+  setSelectedSensor(sensor.id);
+
+  const offsetLatLng = L.latLng(latlng.lat + 0.0015, latlng.lng); // Offset upward
+
+  if (map.getZoom() < 15) {
+    map.flyTo(offsetLatLng, 15, { animate: true, duration: 0.5 });
+    map.once('zoomend moveend', () => {
+      if (marker.getPopup() && !marker.isPopupOpen()) marker.openPopup();
+    });
+  } else {
+    map.panTo(offsetLatLng, { animate: true });
+    if (marker.getPopup() && !marker.isPopupOpen()) marker.openPopup();
+  }
+}
+,
               }}
             >
               <Popup>
@@ -284,7 +290,7 @@ const AQMap = () => {
                     }}
                     aria-label="Close popup"
                   >
-                    {/*REMOVED: <X className="h-4 w-4" /> */}
+                 
                   </button>
 
                   <div className="font-semibold text-base mb-1 pr-5">{sensor.name}</div>
