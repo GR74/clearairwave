@@ -617,6 +617,7 @@ def refresh_data():
     print("Data refreshed", datetime.now().isoformat())
 
 
+previously_safe_ids = set()
 
 # Initial data load
 refresh_data()
