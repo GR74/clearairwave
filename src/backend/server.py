@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from fastapi import Query
 from collections import defaultdict
 import uvicorn
+
 from tenacity import (
     retry,
     stop_after_delay,
@@ -21,13 +22,17 @@ from tenacity import (
     stop_after_attempt,
 )
 
+#Loading Env Variables
+from dotenv import load_dotenv
+import os
+load_dotenv()
 
 #Firebase Integration for Real Time Notifications
 import firebase_admin
 from firebase_admin import credentials, firestore
 
 
-cred = credentials.Certificate("firebase-credentials.json")
+cred = credentials.Certificate("firebase-credentials-new.json")
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 
@@ -572,7 +577,7 @@ def refresh_data():
 
     if triggered_sensors:
         # Send to PipeDream
-        httpx.post("https://eoij4e0zx2dt0s7.m.pipedream.net", json={
+        httpx.post(os.getenv("PIPEDREAM_REALTIME"), json={
             "sensors": [
                 {"name": s.name, "aqi": s.aqi, "category": s.aqiCategory.category}
                 for s in triggered_sensors

@@ -40,7 +40,7 @@ const EmailSubscription = () => {
   });
 
   // Send to Pipedream (existing code)
-  const response = await fetch("https://eo3nb8qkt3n52xu.m.pipedream.net", {
+  const response = await fetch(import.meta.env.VITE_PIPEDREAM_WELCOME, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email: title }),

@@ -7,54 +7,11 @@ import { X, LocateFixed } from 'lucide-react';
 import L from 'leaflet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useNavigate } from 'react-router-dom';
+import { Crosshair } from 'lucide-react';
 
-const MobileLegend = () => (
-  <div
-    className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md px-3 py-2.5 rounded-lg shadow-md text-[10px] z-[1000] w-[180px] sm:hidden"
-    style={{ transform: 'scale(0.75)', transformOrigin: 'bottom right' }}
-  >
-    <div className="font-medium mb-1.5 text-gray-700 text-center">AQI Legend</div>
-    <div className="flex flex-col space-y-1">
-      {[
-        { label: 'Good', color: '#4ade80' },
-        { label: 'Moderate', color: '#facc15' },
-        { label: 'Unhealthy for Sensitive', color: '#f97316' },
-        { label: 'Unhealthy', color: '#ef4444' },
-        { label: 'Very Unhealthy', color: '#8b5cf6' },
-        { label: 'Hazardous', color: '#7f1d1d' },
-      ].map((item) => (
-        <div key={item.label} className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: item.color }} />
-          <span className="text-gray-600">{item.label}</span>
-        </div>
-      ))}
-    </div>
-  </div>
-);
 
-const DesktopLegend = () => (
-  <div
-    className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md px-3 py-2.5 rounded-lg shadow-md text-xs z-[1000] w-[200px] hidden sm:block"
-  >
-    <div className="font-medium mb-1.5 text-gray-700 text-center">AQI Legend</div>
-    <div className="flex flex-col space-y-1">
-      {[
-        { label: 'Good', color: '#4ade80' },
-        { label: 'Moderate', color: '#facc15' },
-        { label: 'Unhealthy for Sensitive', color: '#f97316' },
-        { label: 'Unhealthy', color: '#ef4444' },
-        { label: 'Very Unhealthy', color: '#8b5cf6' },
-        { label: 'Hazardous', color: '#7f1d1d' },
-      ].map((item) => (
-        <div key={item.label} className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: item.color }} />
-          <span className="text-gray-600">{item.label}</span>
-        </div>
-      ))}
-    </div>
-  </div>
-);
 
+// Fix for default marker icons in Leaflet with React
 (L.Icon.Default.prototype as any)._getIconUrl = undefined;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -178,6 +135,39 @@ const CurrentLocationButton = () => {
   );
 };
 
+const RecenterButton = ({ sensors }: { sensors: any[] }) => {
+  const map = useMap();
+
+  const handleRecenter = () => {
+    if (sensors.length > 0) {
+      const bounds = L.latLngBounds(
+        sensors.map(sensor => [
+          sensor.location.lat + getRandomOffset(0.0005),
+          sensor.location.lng + getRandomOffset(0.0005)
+        ])
+      );
+      if (bounds.isValid()) {
+        map.fitBounds(bounds, { padding: [50, 50] });
+      }
+    }
+  };
+
+  return (
+    <button
+      onClick={handleRecenter}
+      className="absolute top-16 right-4 z-[1000] bg-white p-2.5 rounded-lg shadow-lg hover:bg-gray-50 transition-colors"
+      title="Recenter to show all sensors"
+      aria-label="Recenter map to all sensors"
+    >
+      <Crosshair className="h-5 w-5 text-gray-700" />
+    </button>
+  );
+};
+
+
+
+
+
 const AQMap = () => {
   const navigate = useNavigate();
   const [selectedSensor, setSelectedSensor] = useState<string | null>(null);
@@ -250,6 +240,10 @@ const AQMap = () => {
         />
 
         <CurrentLocationButton />
+
+    <RecenterButton sensors={sensors} />
+
+
         {sensors.length > 0 && <FitBounds sensors={sensors} />}
 
         {sensors.map((sensor) => {
