@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
 from apscheduler.schedulers.background import BackgroundScheduler
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import random
 import math
 import time
@@ -27,7 +27,9 @@ from dotenv import load_dotenv
 import os
 load_dotenv()
 
+# ----------------------------------------
 #Firebase Integration for Real Time Notifications
+# ----------------------------------------
 import firebase_admin
 from firebase_admin import credentials, firestore
 
@@ -550,30 +552,28 @@ def calculate_statistics(sensors: List[Sensor]) -> Dict:
 
 def refresh_data():
 
-
-
-
     raw_data = fetch_pm25_data()
     sensors = generate_sensors(raw_data)
 
 
+    #Add to count to show how many datapoints were collected today
+    #Reset Every Day
+    if todaysPoints["count"] == date.today():
+        todaysPoints["count"] += 1
+    else:
+        todaysPoints["count"] = 0
+        todaysPoints["date"] = date.today()
 
 
     global previously_safe_ids
     UNHEALTHY_CATEGORIES = {"Unhealthy", "Very Unhealthy", "Hazardous", "Moderate"} #Moderate is only added for testing purposes
     triggered_sensors = []
 
-
-
-
     #Detect new unhealthy sensors
     for sensor in sensors:
         if sensor.aqiCategory and sensor.aqiCategory.category in UNHEALTHY_CATEGORIES:
             if sensor.id in previously_safe_ids:
                triggered_sensors.append(sensor)
-
-
-
 
     if triggered_sensors:
         # Send to PipeDream
@@ -587,15 +587,12 @@ def refresh_data():
         for s in triggered_sensors:
             print(f"  ↳ {s.name} is now {s.aqiCategory.category}")
 
-
     # Update previously_safe_ids for next check
     previously_safe_ids = {
         sensor.id
         for sensor in sensors
         if sensor.aqiCategory and sensor.aqiCategory.category not in UNHEALTHY_CATEGORIES
     }
-
-
 
 
     # # ⚠️ Fix is here: Only generate hourly data for the first available sensor
@@ -607,13 +604,7 @@ def refresh_data():
         hourly = []
         # historical = []
 
-
-
-
     stats = calculate_statistics(sensors)
-
-
-
 
     DATA["sensors"] = sensors
     # DATA["historical"] = historical
@@ -708,6 +699,15 @@ def get_hourly(sensor_id: Optional[str] = Query(None), metric: Optional[str] = Q
 @app.get("/api/statistics")
 def get_statistics():
     return DATA["statistics"]
+
+
+#Global Counter Variable For Data Points / Day
+todaysPoints = {"count": 0, "date": date.today()}
+
+@app.get("/api/counter")
+def get_count():
+    return todaysPoints
+
 
 
 # Track sensors that were healthy in the last refresh
