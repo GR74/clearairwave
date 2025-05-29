@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Wind,
   Thermometer,
@@ -16,6 +16,9 @@ import { useLocation, useSearchParams } from 'react-router-dom';
 
 
 const DashboardPage = () => {
+
+  const dataTableRef = useRef<HTMLDivElement | null>(null);
+
 
   type SensorInfo = {
     id: string;
@@ -248,9 +251,19 @@ useEffect(() => {
                 timeRange={timeRange}
                 sensorId={selectedSensorId}
                 selectedMetric={selectedMetric}
-                height={450}
+                height={350}
                 onDataLoaded={() => setLastUpdated(new Date())}
               />
+
+              <div className="flex justify-end mt-4">
+  <button
+    onClick={() => dataTableRef.current?.scrollIntoView({ behavior: 'smooth' })}
+    className="text-sm text-blue-600 hover:underline"
+  >
+    View Full Table ↓
+  </button>
+</div>
+
 
               
             </div>
@@ -297,8 +310,10 @@ useEffect(() => {
   Disclaimer: Air quality data is collected from community-deployed sensors for informational purposes. These sensors are not certified regulatory monitors and may vary in accuracy.
 </p>
 
-        <div id="allSensors"></div>
-        <DataTable />
+        <div ref={dataTableRef} id="allSensors">
+  <DataTable />
+</div>
+
         
       </div>
     </div>

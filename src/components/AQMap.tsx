@@ -44,8 +44,12 @@ const FitBounds = ({ sensors }: { sensors: any[] }) => {
         ])
       );
       if (bounds.isValid()) {
-        map.fitBounds(bounds, { padding: [50, 50] });
-      }
+  map.fitBounds(bounds, {
+    paddingTopLeft: [50, 50],
+    paddingBottomRight: [150, 100], // Prevent overlap with legend/buttons
+  });
+}
+
     }
   }, [map, sensors]);
 
@@ -259,18 +263,24 @@ const AQMap = () => {
               icon={createColoredIcon(sensor.aqiCategory?.color || '#9ca3af')}
               eventHandlers={{
                 click: (e) => {
-                  const map = e.target._map as L.Map;
-                  const marker = e.target as L.Marker;
-                  setSelectedSensor(sensor.id);
-                  if (map.getZoom() < 15) {
-                    map.flyTo(marker.getLatLng(), 15, { animate: true, duration: 0.5 });
-                    map.once('zoomend moveend', () => {
-                      if (marker.getPopup() && !marker.isPopupOpen()) marker.openPopup();
-                    });
-                  } else {
-                    if (marker.getPopup() && !marker.isPopupOpen()) marker.openPopup();
-                  }
-                },
+  const map = e.target._map as L.Map;
+  const marker = e.target as L.Marker;
+  const latlng = marker.getLatLng();
+  setSelectedSensor(sensor.id);
+
+  const offsetLatLng = L.latLng(latlng.lat + 0.0015, latlng.lng); // Offset upward
+
+  if (map.getZoom() < 15) {
+    map.flyTo(offsetLatLng, 15, { animate: true, duration: 0.5 });
+    map.once('zoomend moveend', () => {
+      if (marker.getPopup() && !marker.isPopupOpen()) marker.openPopup();
+    });
+  } else {
+    map.panTo(offsetLatLng, { animate: true });
+    if (marker.getPopup() && !marker.isPopupOpen()) marker.openPopup();
+  }
+}
+,
               }}
             >
               <Popup>
@@ -284,7 +294,7 @@ const AQMap = () => {
                     }}
                     aria-label="Close popup"
                   >
-                    {/*REMOVED: <X className="h-4 w-4" /> */}
+                 
                   </button>
 
                   <div className="font-semibold text-base mb-1 pr-5">{sensor.name}</div>
@@ -343,7 +353,7 @@ const AQMap = () => {
         })}
       </MapContainer>
 
-      <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md px-3 py-2.5 rounded-lg shadow-md text-xs z-[1000]">
+      <div className="absolute bottom-16 right-4 bg-white/90 backdrop-blur-md px-3 py-2.5 rounded-lg shadow-md text-xs z-[1000]">
         <div className="font-medium mb-1.5 text-gray-700">AQI Legend</div>
         <div className="flex flex-col space-y-1">
           {[
