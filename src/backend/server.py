@@ -560,6 +560,7 @@ def refresh_data():
     #Reset Every Day
     if todaysPoints["count"] == date.today():
         todaysPoints["count"] += 1
+        print("🔄 Count incremented:", todaysPoints["count"])
     else:
         todaysPoints["count"] = 0
         todaysPoints["date"] = date.today()
