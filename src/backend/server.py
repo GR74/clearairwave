@@ -32,11 +32,21 @@ load_dotenv()
 # ----------------------------------------
 import firebase_admin
 from firebase_admin import credentials, firestore
+import json
+import tempfile
 
+firebase_config_json = os.environ["FIREBASE_CREDENTIALS_JSON"]
 
-cred = credentials.Certificate("firebase-credentials-new.json")
+# Write to a temporary file and use it for credentials
+with tempfile.NamedTemporaryFile(mode="w+", delete=False) as temp_cred_file:
+    temp_cred_file.write(firebase_config_json)
+    temp_cred_file.flush()
+    cred = credentials.Certificate(temp_cred_file.name)
+
+# Initialize Firebase app
 firebase_admin.initialize_app(cred)
 db = firestore.client()
+
 
 
 def get_subscriber_emails():
