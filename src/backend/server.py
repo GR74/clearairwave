@@ -560,7 +560,10 @@ def calculate_statistics(sensors: List[Sensor]) -> Dict:
     }
 
 
+
 def refresh_data():
+
+    global todaysPoints
 
     raw_data = fetch_pm25_data()
     sensors = generate_sensors(raw_data)
@@ -568,6 +571,8 @@ def refresh_data():
 
     #Add to count to show how many datapoints were collected today
     #Reset Every Day
+
+
     if todaysPoints["count"] == date.today():
         todaysPoints["count"] += 1
     else:
@@ -712,7 +717,7 @@ def get_statistics():
 
 
 #Global Counter Variable For Data Points / Day
-todaysPoints = {"count": 0, "date": date.today()}
+
 
 @app.get("/api/counter")
 def get_count():
