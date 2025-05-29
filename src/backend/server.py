@@ -32,11 +32,21 @@ load_dotenv()
 # ----------------------------------------
 import firebase_admin
 from firebase_admin import credentials, firestore
+import json
+import tempfile
 
+firebase_config_json = os.environ["FIREBASE_CREDENTIALS_JSON"]
 
-cred = credentials.Certificate("firebase-credentials-new.json")
+# Write to a temporary file and use it for credentials
+with tempfile.NamedTemporaryFile(mode="w+", delete=False) as temp_cred_file:
+    temp_cred_file.write(firebase_config_json)
+    temp_cred_file.flush()
+    cred = credentials.Certificate(temp_cred_file.name)
+
+# Initialize Firebase app
 firebase_admin.initialize_app(cred)
 db = firestore.client()
+
 
 
 def get_subscriber_emails():
@@ -550,7 +560,10 @@ def calculate_statistics(sensors: List[Sensor]) -> Dict:
     }
 
 
+
 def refresh_data():
+
+    global todaysPoints
 
     raw_data = fetch_pm25_data()
     sensors = generate_sensors(raw_data)
@@ -558,6 +571,11 @@ def refresh_data():
 
     #Add to count to show how many datapoints were collected today
     #Reset Every Day
+    
+    todaysPoints = {"count": 0, "date": date.today()}
+
+
+
     if todaysPoints["count"] == date.today():
         todaysPoints["count"] += 1
         print("🔄 Count incremented:", todaysPoints["count"])
@@ -703,7 +721,7 @@ def get_statistics():
 
 
 #Global Counter Variable For Data Points / Day
-todaysPoints = {"count": 0, "date": date.today()}
+
 
 @app.get("/api/counter")
 def get_count():
