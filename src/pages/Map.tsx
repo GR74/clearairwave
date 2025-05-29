@@ -12,6 +12,18 @@ import Footer from '@/components/Footer'
 
 
 const Map = () => {
+  
+  //get number points today
+  const [refreshCount, setRefreshCount] = useState<number | null>(null);
+
+useEffect(() => {
+  fetch("https://clearairwave.onrender.com/api/counter")
+    .then((res) => res.json())
+    .then((data) => setRefreshCount(data.count))
+    .catch((err) => console.error("Failed to fetch refresh count", err));
+}, []);
+
+  
   const [realSensors, setRealSensors] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -206,7 +218,11 @@ const Map = () => {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Data Points Today</span>
-                    <span className="font-medium">Not yet updated</span>
+                    
+                    {refreshCount !== null && (
+                      <span className="font-medium">{refreshCount}</span>
+                    )}
+                    
                   </div>
                 </div>
 
