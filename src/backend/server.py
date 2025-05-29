@@ -571,6 +571,9 @@ def refresh_data():
 
     #Add to count to show how many datapoints were collected today
     #Reset Every Day
+    
+    todaysPoints = {"count": 0, "date": date.today()}
+
 
 
     if todaysPoints["count"] == date.today():
