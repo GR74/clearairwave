@@ -596,7 +596,7 @@ def refresh_data():
 
     if triggered_sensors:
         # Send to PipeDream
-        httpx.post(os.getenv("PIPEDREAM_REALTIME"), json={
+        httpx.post(os.getenv("VITE_PIPEDREAM_REALTIME"), json={
             "sensors": [
                 {"name": s.name, "aqi": s.aqi, "category": s.aqiCategory.category}
                 for s in triggered_sensors
