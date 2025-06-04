@@ -27,26 +27,18 @@ from dotenv import load_dotenv
 import os
 load_dotenv()
 
+todaysPoints = {"count": 0, "date": date.today()} #Gloval Variable
+previously_safe_ids = set() #Global Variable for trigger logic
+
 # ----------------------------------------
 #Firebase Integration for Real Time Notifications
 # ----------------------------------------
 import firebase_admin
 from firebase_admin import credentials, firestore
-import json
-import tempfile
 
-firebase_config_json = os.environ["FIREBASE_CREDENTIALS_JSON"]
-
-# Write to a temporary file and use it for credentials
-with tempfile.NamedTemporaryFile(mode="w+", delete=False) as temp_cred_file:
-    temp_cred_file.write(firebase_config_json)
-    temp_cred_file.flush()
-    cred = credentials.Certificate(temp_cred_file.name)
-
-# Initialize Firebase app
+cred = credentials.Certificate("firebase-credentials-new.json")
 firebase_admin.initialize_app(cred)
 db = firestore.client()
-
 
 
 def get_subscriber_emails():
@@ -571,11 +563,6 @@ def refresh_data():
 
     #Add to count to show how many datapoints were collected today
     #Reset Every Day
-    
-    todaysPoints = {"count": 0, "date": date.today()}
-
-
-
     if todaysPoints["count"] == date.today():
         todaysPoints["count"] += 1
         print("🔄 Count incremented:", todaysPoints["count"])
@@ -584,19 +571,22 @@ def refresh_data():
         todaysPoints["date"] = date.today()
 
 
+
     global previously_safe_ids
-    UNHEALTHY_CATEGORIES = {"Unhealthy", "Very Unhealthy", "Hazardous", "Moderate"} #Moderate is only added for testing purposes
+    print(f"Currently in PrevSafe: {previously_safe_ids}")
+
+    UNHEALTHY_CATEGORIES = {"Unhealthy", "Very Unhealthy", "Hazardous", "Moderate", "Unhealthy for Sensitive Groups"} #Moderate is only added for testing purposes
     triggered_sensors = []
 
     #Detect new unhealthy sensors
     for sensor in sensors:
         if sensor.aqiCategory and sensor.aqiCategory.category in UNHEALTHY_CATEGORIES:
             if sensor.id in previously_safe_ids:
-               triggered_sensors.append(sensor)
+               triggered_sensors.append(sensor)        
 
     if triggered_sensors:
         # Send to PipeDream
-        httpx.post(os.getenv("PIPEDREAM_REALTIME"), json={
+        httpx.post(os.getenv("VITE_PIPEDREAM_REALTIME"), json={
             "sensors": [
                 {"name": s.name, "aqi": s.aqi, "category": s.aqiCategory.category}
                 for s in triggered_sensors
@@ -612,6 +602,9 @@ def refresh_data():
         for sensor in sensors
         if sensor.aqiCategory and sensor.aqiCategory.category not in UNHEALTHY_CATEGORIES
     }
+
+    print(f"After in PrevSafe: {previously_safe_ids}")
+
 
 
     # # ⚠️ Fix is here: Only generate hourly data for the first available sensor
@@ -632,7 +625,6 @@ def refresh_data():
     print("Data refreshed", datetime.now().isoformat())
 
 
-previously_safe_ids = set()
 
 # Initial data load
 refresh_data()
@@ -721,16 +713,12 @@ def get_statistics():
 
 
 #Global Counter Variable For Data Points / Day
-
-
+scheduler.add_job(refresh_data, 'interval', minutes=10)
 @app.get("/api/counter")
 def get_count():
-    return todaysPoints
+    return {"count": todaysPoints["count"],  "date": todaysPoints["date"]}
 
 
-
-# Track sensors that were healthy in the last refresh
-previously_safe_ids = set()
 
 # ----------------------------------------
 # Run the Server (Uvicorn)

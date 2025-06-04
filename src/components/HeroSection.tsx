@@ -59,12 +59,10 @@ const HeroSection = () => {
                 <span className="text-primary block mt-1">Know your air.</span>
               </h1>
               <p className="text-lg text-muted-foreground">
-                ClearSkies Community AQ provides real-time air quality monitoring for your community,
-                helping you make informed decisions about outdoor activities and health protection.
+                ClearSkies Community AQ provides real-time air quality monitoring for the residents of 
+                <span className="font-medium text-primary">Licking County, Ohio</span>,
+                helping them make informed decisions about outdoor activities and health protection.
               </p>
-              <p className="text-sm text-muted-foreground">
-  Currently serving residents of <span className="font-medium text-primary">Licking County, Ohio</span> with real-time data from community-installed sensors.
-</p>
 
             </div>
             <div className="flex flex-wrap gap-3 sm:gap-4">

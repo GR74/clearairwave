@@ -13,17 +13,6 @@ import Footer from '@/components/Footer'
 
 const Map = () => {
   
-  //get number points today
-  const [refreshCount, setRefreshCount] = useState<number | null>(null);
-
-useEffect(() => {
-  fetch("https://clearairwave.onrender.com/api/counter")
-    .then((res) => res.json())
-    .then((data) => setRefreshCount(data.count))
-    .catch((err) => console.error("Failed to fetch refresh count", err));
-}, []);
-
-  
   const [realSensors, setRealSensors] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -78,6 +67,7 @@ useEffect(() => {
   const sensorCounts = {
     good: realSensors.filter(s => s.aqiCategory?.category === 'Good').length,
     moderate: realSensors.filter(s => s.aqiCategory?.category === 'Moderate').length,
+    unhealthyForSensitive: realSensors.filter(s => s.aqiCategory?.category === 'Unhealthy for Sensitive Groups').length,
     unhealthy: realSensors.filter(s => s.aqiCategory?.category === 'Unhealthy').length,
     hazardous: realSensors.filter(s => s.aqiCategory?.category === 'Hazardous').length,
   };
@@ -110,7 +100,7 @@ useEffect(() => {
  
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
             <div className="glass-card p-4 rounded-xl bg-gradient-to-br from-white to-green-50 shadow-md border border-white/20">
               <div className="flex items-center justify-between">
                 <div>
@@ -131,6 +121,19 @@ useEffect(() => {
                 </div>
                 <div className="h-8 w-8 rounded-full bg-aqi-moderate/10 flex items-center justify-center">
                   <div className="h-4 w-4 rounded-full bg-aqi-moderate"></div>
+                </div>
+              </div>
+            </div>
+
+            <div className="glass-card p-4 rounded-xl bg-gradient-to-br from-white to-orange-100 shadow-md border border-white/20">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-xs text-muted-foreground">Unhealthy for Sensitive</div>
+                  <div className="text-2xl font-semibold text-orange-400">{sensorCounts.unhealthyForSensitive}</div>
+                </div>
+                <div className="h-8 w-8 rounded-full bg-aqi-unhealthy/10 flex items-center justify-center">
+                  <div className="h-4 w-4 rounded-full bg-orange-400"></div> 
+
                 </div>
               </div>
             </div>
@@ -218,10 +221,7 @@ useEffect(() => {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Data Points Today</span>
-                    
-                    {refreshCount !== null && (
-                      <span className="font-medium">{refreshCount}</span>
-                    )}
+                    <span className="font-medium">{}</span>
                     
                   </div>
                 </div>
