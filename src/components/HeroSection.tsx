@@ -60,7 +60,7 @@ const HeroSection = () => {
               </h1>
               <p className="text-lg text-muted-foreground">
                 ClearSkies Community AQ provides real-time air quality monitoring for the residents of 
-                <span className="font-medium text-primary">Licking County, Ohio</span>,
+                <span className="font-medium text-primary"> Licking County, Ohio</span>,
                 helping them make informed decisions about outdoor activities and health protection.
               </p>
 

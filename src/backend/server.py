@@ -28,7 +28,6 @@ import os
 load_dotenv()
 
 todaysPoints = {"count": 0, "date": date.today()} #Gloval Variable
-previously_safe_ids = set() #Global Variable for trigger logic
 
 # ----------------------------------------
 #Firebase Integration for Real Time Notifications
@@ -40,12 +39,24 @@ cred = credentials.Certificate("firebase-credentials-new.json")
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 
-
 def get_subscriber_emails():
     emails_ref = db.collection("emails")
     docs = emails_ref.stream()
     return [doc.to_dict().get("email") for doc in docs]
 
+###
+def load_prev_safe_ids():
+    try:
+        with open("prev_safe_ids.txt", "r") as f:
+            return set(f.read().splitlines())
+    except:
+        return set()
+
+def save_prev_safe_ids(ids: set):
+    with open("prev_safe_ids.txt", "w") as f:
+        f.write("\n".join(ids))
+
+#previously_safe_ids = load_prev_safe_ids() #Global Variable for trigger logic
 
 # ----------------------------------------
 # AQI Utility Functions (from aqiUtils.ts)
@@ -572,8 +583,8 @@ def refresh_data():
 
 
 
-    global previously_safe_ids
-    print(f"Currently in PrevSafe: {previously_safe_ids}")
+    #global previously_safe_ids
+    previously_safe_ids = load_prev_safe_ids()
 
     UNHEALTHY_CATEGORIES = {"Unhealthy", "Very Unhealthy", "Hazardous", "Moderate", "Unhealthy for Sensitive Groups"} #Moderate is only added for testing purposes
     triggered_sensors = []
@@ -597,13 +608,13 @@ def refresh_data():
             print(f"  ↳ {s.name} is now {s.aqiCategory.category}")
 
     # Update previously_safe_ids for next check
-    previously_safe_ids = {
+    new_safe_ids = {
         sensor.id
         for sensor in sensors
         if sensor.aqiCategory and sensor.aqiCategory.category not in UNHEALTHY_CATEGORIES
     }
+    save_prev_safe_ids(new_safe_ids)
 
-    print(f"After in PrevSafe: {previously_safe_ids}")
 
 
 
