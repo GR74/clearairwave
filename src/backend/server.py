@@ -586,7 +586,7 @@ def refresh_data():
     #global previously_safe_ids
     previously_safe_ids = load_prev_safe_ids()
 
-    UNHEALTHY_CATEGORIES = {"Unhealthy", "Very Unhealthy", "Hazardous", "Moderate", "Unhealthy for Sensitive Groups"} #Moderate is only added for testing purposes
+    UNHEALTHY_CATEGORIES = {"Unhealthy", "Very Unhealthy", "Hazardous", "Unhealthy for Sensitive Groups"}
     triggered_sensors = []
 
     #Detect new unhealthy sensors
