@@ -185,7 +185,7 @@ const AQMap = () => {
     const fetchData = async () => {
       if (!isMounted) return;
       try {
-        const response = await axios.get("https://clearairwave.onrender.com/api/sensors");
+        const response = await axios.get("https://clearairwave-obf5.onrender.com/api/sensors");
         if (isMounted) {
           setSensors(response.data);
           setError(null);

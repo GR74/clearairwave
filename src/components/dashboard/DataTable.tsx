@@ -33,7 +33,7 @@ const DataTable = () => {
   const refreshData = async () => {
   try {
     setIsLoading(true);
-    const response = await axios.get('https://clearairwave.onrender.com/api/refreshtable');
+    const response = await axios.get('https://clearairwave-obf5.onrender.com/api/refreshtable');
     setRealSensors(response.data);
   } catch (err) {
     setError(err instanceof Error ? err : new Error('Failed to refresh sensor data'));
@@ -48,7 +48,7 @@ const DataTable = () => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const response = await axios.get('https://clearairwave.onrender.com/api/sensors');
+        const response = await axios.get('https://clearairwave-obf5.onrender.com/api/sensors');
         setRealSensors(response.data); // Set real sensor data
         setIsLoading(false);
       } catch (err) {
