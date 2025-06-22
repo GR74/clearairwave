@@ -37,7 +37,7 @@ const Footer = () => {
                     <div>
                       <h3 className="text-sm font-semibold mb-4">CONNECT</h3>
                       <ul className="space-y-2">
-                        <li><a href="clearskiesaq.com" className="text-sm text-muted-foreground hover:text-primary transition-colors">Real-time Alerts</a></li>
+                        <li><a href="https://clearskiesaq.com" className="text-sm text-muted-foreground hover:text-primary transition-colors">Real-time Alerts</a></li>
                         <li><Link to="/contact" className="text-sm text-muted-foreground hover:text-primary transition-colors">Contact Us</Link></li>
                       </ul>
                     </div>
