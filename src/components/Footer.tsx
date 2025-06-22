@@ -30,14 +30,14 @@ const Footer = () => {
                     <div>
                       <h3 className="text-sm font-semibold mb-4">RESOURCES</h3>
                       <ul className="space-y-2">
-                        <li><Link to="/dashboard#guide" className="text-sm text-muted-foreground hover:text-primary transition-colors">  Guide</Link></li>
-                        <li><Link to="/dashboard#aqt" className="text-sm text-muted-foreground hover:text-primary transition-colors">Air Quality Tips</Link></li>
+                        <li><Link to="https://clearskiesaq.com/#guide" className="text-sm text-muted-foreground hover:text-primary transition-colors">  Guide</Link></li>
+                        <li><Link to="https://clearskiesaq.com/#aqt" className="text-sm text-muted-foreground hover:text-primary transition-colors">Air Quality Tips</Link></li>
                       </ul>
                     </div>
                     <div>
                       <h3 className="text-sm font-semibold mb-4">CONNECT</h3>
                       <ul className="space-y-2">
-                        <li><a href="/dashboard" className="text-sm text-muted-foreground hover:text-primary transition-colors">Real-time Alerts</a></li>
+                        <li><a href="clearskiesaq.com" className="text-sm text-muted-foreground hover:text-primary transition-colors">Real-time Alerts</a></li>
                         <li><Link to="/contact" className="text-sm text-muted-foreground hover:text-primary transition-colors">Contact Us</Link></li>
                       </ul>
                     </div>
